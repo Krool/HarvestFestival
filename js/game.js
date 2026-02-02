@@ -67,7 +67,9 @@
                 4: createGarden()
             },
             boardOffset: { x: 0, y: 0 },
-            haystackSize: 1,
+            haystackPoints: 0,
+            harvestCount: 0,
+            maxHarvests: 8,
             otherTeamProgress: { 2: 0, 3: 0, 4: 0 }
         };
     }
@@ -90,7 +92,9 @@
                 if (!state.wins) state.wins = 0;
                 if (state.needsHarvest === undefined) state.needsHarvest = false;
                 if (!state.multiplier) state.multiplier = 1;
-                if (!state.haystackSize) state.haystackSize = 1;
+                if (state.haystackPoints === undefined) state.haystackPoints = 0;
+                if (state.harvestCount === undefined) state.harvestCount = 0;
+                if (state.maxHarvests === undefined) state.maxHarvests = 8;
                 if (!state.otherTeamProgress) state.otherTeamProgress = { 2: 0, 3: 0, 4: 0 };
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
@@ -733,81 +737,84 @@
     }
 
     function drawCenterArea(cx, cy, st) {
-        const quadSize = boardSize * 0.28;
-        const distFromCenter = quadSize * 0.75;
+        const centerDiamondSize = boardSize * 0.38;
 
         boardCtx.save();
         boardCtx.translate(cx, cy);
 
-        // Team quadrants rotated 45 degrees, positioned around center
-        // Each quadrant has haystack pointing toward center
+        // Draw the center diamond outline
+        boardCtx.strokeStyle = '#8D6E63';
+        boardCtx.lineWidth = 2;
+        boardCtx.beginPath();
+        boardCtx.moveTo(0, -centerDiamondSize);
+        boardCtx.lineTo(centerDiamondSize, 0);
+        boardCtx.lineTo(0, centerDiamondSize);
+        boardCtx.lineTo(-centerDiamondSize, 0);
+        boardCtx.closePath();
+        boardCtx.stroke();
+
+        // Team quadrants - each is a diamond taking 1/4 of the center
+        // Top, Right, Bottom, Left
         const quadrants = [
-            { team: 1, angle: 0, x: 0, y: -distFromCenter },           // Top
-            { team: 2, angle: Math.PI/2, x: distFromCenter, y: 0 },    // Right
-            { team: 3, angle: Math.PI, x: 0, y: distFromCenter },      // Bottom
-            { team: 4, angle: -Math.PI/2, x: -distFromCenter, y: 0 }   // Left
+            { team: 1, points: [[0, -centerDiamondSize], [centerDiamondSize * 0.5, -centerDiamondSize * 0.5], [0, 0], [-centerDiamondSize * 0.5, -centerDiamondSize * 0.5]] },
+            { team: 2, points: [[centerDiamondSize, 0], [centerDiamondSize * 0.5, centerDiamondSize * 0.5], [0, 0], [centerDiamondSize * 0.5, -centerDiamondSize * 0.5]] },
+            { team: 3, points: [[0, centerDiamondSize], [-centerDiamondSize * 0.5, centerDiamondSize * 0.5], [0, 0], [centerDiamondSize * 0.5, centerDiamondSize * 0.5]] },
+            { team: 4, points: [[-centerDiamondSize, 0], [-centerDiamondSize * 0.5, -centerDiamondSize * 0.5], [0, 0], [-centerDiamondSize * 0.5, centerDiamondSize * 0.5]] }
         ];
 
         for (let q = 0; q < quadrants.length; q++) {
             const quad = quadrants[q];
             const color = TEAM_COLORS[quad.team];
             const garden = st.gardens[quad.team];
+            const pts = quad.points;
 
-            boardCtx.save();
-            boardCtx.translate(quad.x, quad.y);
-            boardCtx.rotate(quad.angle);
-
-            // Square quadrant background (rotated 45 deg via the angle)
+            // Draw diamond quadrant
+            boardCtx.beginPath();
+            boardCtx.moveTo(pts[0][0], pts[0][1]);
+            boardCtx.lineTo(pts[1][0], pts[1][1]);
+            boardCtx.lineTo(pts[2][0], pts[2][1]);
+            boardCtx.lineTo(pts[3][0], pts[3][1]);
+            boardCtx.closePath();
             boardCtx.fillStyle = hexToRgba(color, 0.85);
-            drawRoundedRect(boardCtx, -quadSize/2, -quadSize/2, quadSize, quadSize, 6);
             boardCtx.fill();
             boardCtx.strokeStyle = hexToRgba(color, 1);
             boardCtx.lineWidth = 2;
             boardCtx.stroke();
 
-            // Mini garden (away from center - top of rotated quadrant)
-            const gardenSize = quadSize * 0.52;
-            drawMiniGarden(boardCtx, 0, -quadSize/2 + gardenSize/2 + 4, gardenSize, garden);
+            // Calculate center of this quadrant (excluding the center point)
+            const quadCenterX = (pts[0][0] + pts[1][0] + pts[3][0]) / 3;
+            const quadCenterY = (pts[0][1] + pts[1][1] + pts[3][1]) / 3;
 
-            // Team label (middle area)
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 10px Arial';
+            // Mini garden in outer half of quadrant
+            const gardenSize = centerDiamondSize * 0.28;
+            const gardenOffsetX = quadCenterX * 0.7;
+            const gardenOffsetY = quadCenterY * 0.7;
+            drawMiniGarden(boardCtx, gardenOffsetX, gardenOffsetY, gardenSize, garden);
+
+            // Haystack near center
+            const haystackOffsetX = quadCenterX * 0.25;
+            const haystackOffsetY = quadCenterY * 0.25;
+            boardCtx.font = '14px Arial';
             boardCtx.textAlign = 'center';
             boardCtx.textBaseline = 'middle';
-            boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
+            boardCtx.fillText('🌾', haystackOffsetX, haystackOffsetY);
+
+            // Team label
+            boardCtx.fillStyle = '#fff';
+            boardCtx.font = 'bold 9px Arial';
+            boardCtx.shadowColor = 'rgba(0,0,0,0.7)';
             boardCtx.shadowBlur = 2;
-            boardCtx.fillText(TEAM_NAMES[quad.team], 0, 0);
+            boardCtx.fillText(TEAM_NAMES[quad.team], quadCenterX * 0.45, quadCenterY * 0.45 + 12);
             boardCtx.shadowBlur = 0;
-
-            // Haystack (toward center - bottom of rotated quadrant)
-            boardCtx.fillStyle = '#D4A574';
-            drawRoundedRect(boardCtx, -16, quadSize/2 - 24, 32, 18, 4);
-            boardCtx.fill();
-            boardCtx.strokeStyle = '#8B7355';
-            boardCtx.lineWidth = 1;
-            boardCtx.stroke();
-            boardCtx.font = '12px Arial';
-            boardCtx.fillText('🌾', 0, quadSize/2 - 12);
-
-            boardCtx.restore();
         }
 
-        // Center overlay: Community Chest & Chance (small in the very center)
-        boardCtx.fillStyle = 'rgba(200,230,201,0.9)';
-        drawRoundedRect(boardCtx, -22, -15, 44, 30, 6);
-        boardCtx.fill();
-
-        boardCtx.fillStyle = '#4169E1';
-        drawRoundedRect(boardCtx, -18, -10, 16, 16, 3);
+        // Small center decoration
+        boardCtx.fillStyle = 'rgba(139,69,19,0.9)';
+        boardCtx.beginPath();
+        boardCtx.arc(0, 0, 12, 0, Math.PI * 2);
         boardCtx.fill();
         boardCtx.font = '10px Arial';
-        boardCtx.textAlign = 'center';
-        boardCtx.fillText('📦', -10, 4);
-
-        boardCtx.fillStyle = '#FF8C00';
-        drawRoundedRect(boardCtx, 2, -10, 16, 16, 3);
-        boardCtx.fill();
-        boardCtx.fillText('❓', 10, 4);
+        boardCtx.fillText('🎲', 0, 1);
 
         boardCtx.restore();
     }
@@ -860,7 +867,8 @@
         const wrapper = document.getElementById('garden-wrapper');
         if (!wrapper) return;
         const rect = wrapper.getBoundingClientRect();
-        const maxSize = Math.min(rect.width - 20, rect.height - 20, 400);
+        // Optimized for iPhone portrait - use more of the available width
+        const maxSize = Math.min(rect.width - 16, rect.height - 16, 340);
         gardenCanvas.width = maxSize;
         gardenCanvas.height = maxSize;
         renderGarden();
@@ -1142,11 +1150,35 @@
             }
             playRowHit();
         } else {
-            const row = roll1 - 1;
-            const col = roll2 - 1;
-            const plotIndex = row * 4 + col;
+            // Single tile - re-roll if max level
+            let row = roll1 - 1;
+            let col = roll2 - 1;
+            let plotIndex = row * 4 + col;
+            const garden = st.gardens[team];
+
+            // If this plot is max level, find a different one
+            if (garden.plots[plotIndex].xp >= MAX_PLOT_XP) {
+                const availablePlots = [];
+                for (let i = 0; i < 16; i++) {
+                    if (garden.plots[i].xp < MAX_PLOT_XP) {
+                        availablePlots.push(i);
+                    }
+                }
+                if (availablePlots.length > 0) {
+                    // Pick a random available plot
+                    plotIndex = availablePlots[randomInt(0, availablePlots.length - 1)];
+                    row = Math.floor(plotIndex / 4);
+                    col = plotIndex % 4;
+                    result.message = '(' + (row + 1) + ',' + (col + 1) + ') redirected!';
+                } else {
+                    // All plots maxed - shouldn't happen often
+                    result.message = 'All plots maxed!';
+                }
+            } else {
+                result.message = '(' + roll1 + ',' + roll2 + ')';
+            }
+
             result.type = 'single';
-            result.message = '(' + roll1 + ',' + roll2 + ')';
             result.affectedPlots = [plotIndex];
             updateGardenPlot(team, plotIndex, XP_GAIN);
             playPlotHit();
@@ -1175,36 +1207,36 @@
         const topSeeds = document.getElementById('top-seeds');
         if (topSeeds) topSeeds.textContent = st.seeds;
 
-        // Top coins
-        const topCoins = document.getElementById('top-coins');
-        if (topCoins) topCoins.textContent = st.coins;
-
-        // Rolls count in nav
-        const rollsCount = document.getElementById('rolls-count');
-        if (rollsCount) rollsCount.textContent = st.seeds;
-
         // Garden seeds
         const gardenSeeds = document.getElementById('garden-seeds');
         if (gardenSeeds) gardenSeeds.textContent = st.seeds;
-
-        // Haystack count
-        const haystackCount = document.getElementById('haystack-count');
-        if (haystackCount) haystackCount.textContent = st.seeds;
 
         // Leaderboard/wins count
         const leaderboardCount = document.getElementById('leaderboard-count');
         if (leaderboardCount) leaderboardCount.textContent = st.wins || 0;
 
-        // Event progress
-        const totalProgress = getTotalProgress();
-        const maxProgress = 4 * 16 * MAX_PLOT_XP; // 4 teams * 16 plots * 1000 xp
-        const progressPercent = Math.min(100, (totalProgress / maxProgress) * 100);
-
+        // Event progress - shows seeds earned (use seeds as progress indicator)
         const progressFill = document.getElementById('event-progress-fill');
+        const progressPercent = Math.min(100, (st.seeds / 100) * 100);
         if (progressFill) progressFill.style.width = progressPercent + '%';
 
         const progressText = document.getElementById('event-progress-text');
-        if (progressText) progressText.textContent = Math.floor(progressPercent) + '/100';
+        if (progressText) progressText.textContent = st.seeds;
+
+        // Harvest counter
+        const harvestNum = (st.harvestCount || 0) + 1;
+        const harvestCounter = document.getElementById('harvest-counter');
+        if (harvestCounter) {
+            harvestCounter.textContent = harvestNum + '/' + st.maxHarvests;
+            if (harvestNum >= 7) harvestCounter.style.color = '#FFD700';
+        }
+
+        // Garden harvest counter
+        const gardenHarvestCounter = document.getElementById('garden-harvest-counter');
+        if (gardenHarvestCounter) {
+            gardenHarvestCounter.textContent = harvestNum + '/' + st.maxHarvests;
+            if (harvestNum >= 7) gardenHarvestCounter.innerHTML = harvestNum + '/' + st.maxHarvests + ' <span style="color:#FFD700">2x!</span>';
+        }
 
         // Timer
         updateTimer();
@@ -1315,15 +1347,21 @@
     function completeHarvest(overlay) {
         const st = getState();
 
-        // Calculate rewards
+        // Calculate points based on plant stages (not XP)
         const garden = st.gardens[st.selectedTeam];
-        let totalXP = 0;
+        let totalPoints = 0;
         for (let i = 0; i < garden.plots.length; i++) {
-            totalXP += garden.plots[i].xp;
+            // Points based on stage: 0=0, 1=10, 2=25, 3=50, 4=100
+            const stagePoints = [0, 10, 25, 50, 100];
+            totalPoints += stagePoints[garden.plots[i].stage];
         }
 
-        const coinReward = Math.floor(totalXP / 10);
-        const seedReward = Math.floor(totalXP / 50);
+        // Last 2 harvests are 2x points
+        const harvestNum = st.harvestCount + 1;
+        const is2xHarvest = harvestNum >= 7; // Harvests 7 and 8 are 2x
+        if (is2xHarvest) {
+            totalPoints *= 2;
+        }
 
         playFullBoardFanfare();
 
@@ -1331,11 +1369,8 @@
         setTimeout(function() {
             overlay.classList.add('hidden');
 
-            // Fly rewards to HUD
-            flyRewardsToHUD(coinReward, seedReward);
-
-            // Increase haystack size
-            increaseHaystackSize(totalXP);
+            // Fly points to haystack display
+            flyPointsToHaystack(totalPoints, is2xHarvest);
 
             // Harvest other teams too (simulate teammates)
             harvestOtherTeams();
@@ -1344,8 +1379,19 @@
             setTimeout(function() {
                 clearGarden(st.selectedTeam);
                 setNeedsHarvest(false);
-                addCoins(coinReward);
-                addSeeds(seedReward);
+
+                // Add points to haystack
+                st.haystackPoints = (st.haystackPoints || 0) + totalPoints;
+                st.harvestCount = (st.harvestCount || 0) + 1;
+
+                // Check if event is complete
+                if (st.harvestCount >= st.maxHarvests) {
+                    // Event complete - could trigger special reward
+                    st.harvestCount = 0;
+                    st.haystackPoints = 0;
+                }
+
+                saveState();
                 addWin();
                 isHarvesting = false;
                 renderGarden();
@@ -1354,20 +1400,50 @@
         }, 500);
     }
 
-    function increaseHaystackSize(xpHarvested) {
-        const st = getState();
-        // Increase size based on XP harvested (cap at 5)
-        const sizeIncrease = Math.ceil(xpHarvested / 2000);
-        st.haystackSize = Math.min(5, (st.haystackSize || 1) + sizeIncrease);
-        saveState();
-        updateHaystackDisplay();
+    function flyPointsToHaystack(points, is2x) {
+        const gardenCanvas = document.getElementById('garden-canvas');
+        const haystackArea = document.getElementById('haystack-area');
+        if (!gardenCanvas || !haystackArea) return;
+
+        const canvasRect = gardenCanvas.getBoundingClientRect();
+        const haystackRect = haystackArea.getBoundingClientRect();
+
+        const startX = canvasRect.left + canvasRect.width / 2;
+        const startY = canvasRect.top + canvasRect.height / 2;
+        const endX = haystackRect.left + haystackRect.width / 2;
+        const endY = haystackRect.top + haystackRect.height / 2;
+
+        // Show floating points text
+        const text = (is2x ? '2x ' : '') + '+' + points + ' pts';
+        showFloatingText(text, startX, startY, is2x ? '#FFD700' : '#4CAF50');
+
+        // Fly hay icons
+        for (let i = 0; i < Math.min(5, Math.ceil(points / 100)); i++) {
+            setTimeout(function() {
+                const hay = document.createElement('div');
+                hay.className = 'flying-reward';
+                hay.textContent = '🌾';
+                hay.style.left = (startX + (Math.random() - 0.5) * 60) + 'px';
+                hay.style.top = (startY + (Math.random() - 0.5) * 60) + 'px';
+                document.body.appendChild(hay);
+
+                requestAnimationFrame(function() {
+                    hay.style.left = endX + 'px';
+                    hay.style.top = endY + 'px';
+                    hay.style.opacity = '0';
+                    hay.style.transform = 'scale(0.5)';
+                });
+
+                setTimeout(function() { hay.remove(); }, 700);
+            }, i * 100);
+        }
     }
 
     function updateHaystackDisplay() {
         const st = getState();
-        const haystackIcon = document.querySelector('.haystack-icon');
-        if (haystackIcon) {
-            haystackIcon.className = 'haystack-icon size-' + (st.haystackSize || 1);
+        const haystackCount = document.getElementById('haystack-count');
+        if (haystackCount) {
+            haystackCount.textContent = st.haystackPoints || 0;
         }
     }
 

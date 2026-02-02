@@ -16,30 +16,29 @@
                     <span class="resource-icon">🌱</span>
                     <span id="top-seeds">50</span>
                 </div>
-                <div class="resource-item coins">
-                    <span class="resource-icon">🪙</span>
-                    <span id="top-coins">0</span>
-                </div>
                 <div class="spacer"></div>
                 <button id="menu-btn" class="icon-btn">☰</button>
             </div>
 
             <!-- Event Banner -->
             <div id="event-banner">
-                <div class="event-title">HARVEST FESTIVAL</div>
+                <div class="event-header">
+                    <span class="event-title">HARVEST FESTIVAL</span>
+                    <span id="harvest-counter" class="harvest-counter">1/8</span>
+                </div>
                 <div class="event-progress">
                     <div class="progress-bar">
                         <div id="event-progress-fill" class="progress-fill"></div>
                     </div>
-                    <span id="event-progress-text">0/100</span>
+                    <span id="event-progress-text">0</span>
                 </div>
                 <div class="event-timer">
                     <span id="banner-timer">12:00:00</span>
                 </div>
             </div>
 
-            <!-- Left Side Badges -->
-            <div id="left-badges">
+            <!-- Right Side Badges -->
+            <div id="right-badges">
                 <div class="side-badge garden-badge" id="garden-badge">
                     <span class="badge-icon">🌻</span>
                     <span class="badge-label">Garden</span>
@@ -79,12 +78,6 @@
                     <span class="nav-icon">🏗️</span>
                     <span class="nav-label">BUILD</span>
                 </div>
-                <div class="nav-item nav-center">
-                    <div class="rolls-display">
-                        <span id="rolls-count">50</span>
-                        <span class="rolls-label">SEEDS</span>
-                    </div>
-                </div>
                 <div class="nav-item">
                     <span class="nav-icon">📖</span>
                     <span class="nav-label">ALBUM</span>
@@ -112,8 +105,11 @@
             <div id="haystack-area">
                 <div class="haystack-icon">🌾</div>
                 <div class="haystack-info">
-                    <div class="haystack-title">Haystack</div>
-                    <div class="haystack-seeds"><span id="haystack-count">50</span> Seeds</div>
+                    <div class="haystack-title">Haystack Points</div>
+                    <div class="haystack-points"><span id="haystack-count">0</span> pts</div>
+                </div>
+                <div class="harvest-info">
+                    <span id="garden-harvest-counter">1/8</span>
                 </div>
             </div>
 
