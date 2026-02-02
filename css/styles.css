@@ -64,14 +64,18 @@ body {
     color: white;
     font-weight: bold;
     font-size: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 .resource-item.seeds {
-    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    background: linear-gradient(180deg, #66BB6A 0%, #2E7D32 100%);
+    border-color: #81C784;
 }
 
 .resource-item.coins {
-    background: linear-gradient(135deg, #FFD700, #FFA000);
+    background: linear-gradient(180deg, #FFEB3B 0%, #FF9800 100%);
+    border-color: #FFE082;
     color: #5D4037;
 }
 
@@ -98,13 +102,32 @@ body {
 
 /* Event Banner */
 #event-banner {
-    background: linear-gradient(135deg, #8B5A2B, #A0522D);
+    background: linear-gradient(180deg, #A0522D 0%, #8B4513 50%, #5D3A1A 100%);
     margin: 0 12px;
     padding: 10px 15px;
     border-radius: 15px;
     border: 3px solid #DEB887;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
     z-index: 10;
+    position: relative;
+}
+
+#event-banner::before {
+    content: '🌾';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
+}
+
+#event-banner::after {
+    content: '🌻';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 24px;
 }
 
 .event-title {
@@ -112,8 +135,9 @@ body {
     font-weight: bold;
     font-size: 16px;
     text-align: center;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7), 0 0 10px rgba(255,215,0,0.3);
     margin-bottom: 6px;
+    letter-spacing: 1px;
 }
 
 .event-progress {
@@ -231,19 +255,27 @@ body {
 }
 
 #go-button {
-    width: 100px;
-    height: 100px;
-    background: linear-gradient(135deg, #E53935, #C62828);
-    border-radius: 20px;
+    width: 110px;
+    height: 110px;
+    background: linear-gradient(180deg, #FF5252 0%, #D32F2F 50%, #B71C1C 100%);
+    border-radius: 22px;
     transform: rotate(45deg);
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow:
         0 6px 0 #8E0000,
-        0 10px 20px rgba(0,0,0,0.4);
+        0 10px 25px rgba(0,0,0,0.5),
+        inset 0 2px 0 rgba(255,255,255,0.3);
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
+    border: 3px solid #FF8A80;
+    animation: goPulse 2s infinite;
+}
+
+@keyframes goPulse {
+    0%, 100% { box-shadow: 0 6px 0 #8E0000, 0 10px 25px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.3); }
+    50% { box-shadow: 0 6px 0 #8E0000, 0 10px 35px rgba(255,82,82,0.6), inset 0 2px 0 rgba(255,255,255,0.3); }
 }
 
 #go-button:active {
@@ -251,6 +283,7 @@ body {
     box-shadow:
         0 3px 0 #8E0000,
         0 5px 10px rgba(0,0,0,0.4);
+    animation: none;
 }
 
 .go-inner {
@@ -277,9 +310,10 @@ body {
 /* Bottom Navigation */
 #bottom-nav {
     display: flex;
-    background: linear-gradient(180deg, #5D4037, #4E342E);
+    background: linear-gradient(180deg, #6D4C41 0%, #5D4037 30%, #3E2723 100%);
     padding: 8px 5px 12px;
-    border-top: 3px solid #8D6E63;
+    border-top: 3px solid #A1887F;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
 }
 
 .nav-item {
@@ -311,24 +345,28 @@ body {
 }
 
 .rolls-display {
-    background: linear-gradient(135deg, #4CAF50, #2E7D32);
-    padding: 8px 16px;
-    border-radius: 20px;
+    background: linear-gradient(180deg, #66BB6A 0%, #43A047 50%, #2E7D32 100%);
+    padding: 10px 20px;
+    border-radius: 25px;
     text-align: center;
-    border: 2px solid #81C784;
+    border: 3px solid #A5D6A7;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+    min-width: 80px;
 }
 
 #rolls-count {
     color: white;
-    font-size: 18px;
+    font-size: 22px;
     font-weight: bold;
     display: block;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 
 .rolls-label {
-    color: rgba(255,255,255,0.8);
-    font-size: 8px;
+    color: rgba(255,255,255,0.9);
+    font-size: 9px;
     font-weight: bold;
+    letter-spacing: 1px;
 }
 
 /* ==================== GARDEN VIEW ==================== */
@@ -426,10 +464,10 @@ body {
 }
 
 .die {
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(145deg, #ffffff, #e6e6e6);
-    border-radius: 12px;
+    width: 65px;
+    height: 65px;
+    background: linear-gradient(145deg, #ffffff 0%, #f5f5f5 50%, #e0e0e0 100%);
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -437,9 +475,11 @@ body {
     font-weight: bold;
     color: #333;
     box-shadow:
-        0 4px 0 #ccc,
-        0 6px 10px rgba(0, 0, 0, 0.4);
+        0 4px 0 #bdbdbd,
+        0 8px 15px rgba(0, 0, 0, 0.4),
+        inset 0 2px 0 rgba(255,255,255,0.8);
     transition: transform 0.1s;
+    border: 2px solid #e0e0e0;
 }
 
 .die.rolling {
@@ -506,27 +546,30 @@ body {
 
 .roll-button {
     width: 100%;
-    padding: 16px;
+    padding: 18px;
     border: none;
-    border-radius: 15px;
-    background: linear-gradient(135deg, #FF6B35, #F7931E);
+    border-radius: 18px;
+    background: linear-gradient(180deg, #FF8A65 0%, #FF5722 50%, #E64A19 100%);
     box-shadow:
-        0 5px 0 #CC4400,
-        0 8px 15px rgba(0,0,0,0.3);
+        0 5px 0 #BF360C,
+        0 10px 20px rgba(0,0,0,0.4),
+        inset 0 2px 0 rgba(255,255,255,0.3);
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
+    border: 3px solid #FFAB91;
 }
 
 .roll-button:active {
     transform: translateY(3px);
     box-shadow:
-        0 2px 0 #CC4400,
+        0 2px 0 #BF360C,
         0 4px 8px rgba(0,0,0,0.3);
 }
 
 .roll-button:disabled {
-    background: linear-gradient(135deg, #888, #666);
-    box-shadow: 0 5px 0 #444;
+    background: linear-gradient(180deg, #9E9E9E 0%, #757575 50%, #616161 100%);
+    box-shadow: 0 5px 0 #424242;
+    border-color: #BDBDBD;
     cursor: not-allowed;
 }
 
