@@ -16,7 +16,7 @@
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        return hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0') + ':' + seconds.toString().padStart(2, '0');
     }
 
     function drawRoundedRect(ctx, x, y, width, height, radius) {
@@ -388,9 +388,12 @@
 
     let boardCanvas, boardCtx;
     let isDragging = false;
+    let dragStartPos = { x: 0, y: 0 };
     let lastDragPos = { x: 0, y: 0 };
+    let totalDragDistance = 0;
     let boardSize = 800;
     let centerClickCallback = null;
+    const DRAG_THRESHOLD = 10; // Pixels of movement before considered a drag
 
     function initBoard(canvas, onCenterClick) {
         boardCanvas = canvas;
@@ -404,11 +407,10 @@
         canvas.addEventListener('mousemove', handleBoardDragMove);
         canvas.addEventListener('mouseup', handleBoardDragEnd);
         canvas.addEventListener('mouseleave', handleBoardDragEnd);
-        canvas.addEventListener('click', handleBoardClick);
 
         canvas.addEventListener('touchstart', handleBoardTouchStart, { passive: false });
         canvas.addEventListener('touchmove', handleBoardTouchMove, { passive: false });
-        canvas.addEventListener('touchend', handleBoardDragEnd);
+        canvas.addEventListener('touchend', handleBoardTouchEnd);
     }
 
     function resizeBoardCanvas() {
@@ -420,14 +422,18 @@
 
     function handleBoardDragStart(e) {
         isDragging = true;
+        dragStartPos = { x: e.clientX, y: e.clientY };
         lastDragPos = { x: e.clientX, y: e.clientY };
+        totalDragDistance = 0;
     }
 
     function handleBoardTouchStart(e) {
         e.preventDefault();
         if (e.touches.length === 1) {
             isDragging = true;
+            dragStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
             lastDragPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            totalDragDistance = 0;
         }
     }
 
@@ -436,6 +442,7 @@
         const st = getState();
         const dx = e.clientX - lastDragPos.x;
         const dy = e.clientY - lastDragPos.y;
+        totalDragDistance += Math.sqrt(dx * dx + dy * dy);
         const maxOffset = boardSize / 3;
         const newOffset = {
             x: clamp(st.boardOffset.x + dx, -maxOffset, maxOffset),
@@ -452,6 +459,7 @@
         const st = getState();
         const dx = e.touches[0].clientX - lastDragPos.x;
         const dy = e.touches[0].clientY - lastDragPos.y;
+        totalDragDistance += Math.sqrt(dx * dx + dy * dy);
         const maxOffset = boardSize / 3;
         const newOffset = {
             x: clamp(st.boardOffset.x + dx, -maxOffset, maxOffset),
@@ -462,18 +470,39 @@
         renderBoard();
     }
 
-    function handleBoardDragEnd() {
+    function handleBoardDragEnd(e) {
+        if (!isDragging) return;
         isDragging = false;
+
+        // Only trigger click if we didn't drag significantly
+        if (totalDragDistance < DRAG_THRESHOLD && e) {
+            const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+            const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+            if (clientX !== undefined && clientY !== undefined) {
+                handleBoardClick(clientX, clientY);
+            }
+        }
     }
 
-    function handleBoardClick(e) {
+    function handleBoardTouchEnd(e) {
+        if (!isDragging) return;
+        isDragging = false;
+
+        // Only trigger click if we didn't drag significantly
+        if (totalDragDistance < DRAG_THRESHOLD && e.changedTouches && e.changedTouches.length > 0) {
+            const touch = e.changedTouches[0];
+            handleBoardClick(touch.clientX, touch.clientY);
+        }
+    }
+
+    function handleBoardClick(clientX, clientY) {
         const st = getState();
         const rect = boardCanvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
         const centerX = boardCanvas.width / 2 + st.boardOffset.x;
         const centerY = boardCanvas.height / 2 + st.boardOffset.y;
-        const centerSize = boardSize * 0.35;
+        const centerSize = boardSize * 0.45; // Larger click area
         const dx = x - centerX;
         const dy = y - centerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -485,10 +514,22 @@
     function renderBoard() {
         const st = getState();
         boardCtx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
+
         const centerX = boardCanvas.width / 2 + st.boardOffset.x;
         const centerY = boardCanvas.height / 2 + st.boardOffset.y;
+
+        // Save context and rotate entire board 45 degrees
+        boardCtx.save();
+        boardCtx.translate(centerX, centerY);
+        boardCtx.rotate(Math.PI / 4);
+        boardCtx.translate(-centerX, -centerY);
+
         drawBoardBackground(centerX, centerY);
         drawMonopolyBorder(centerX, centerY);
+
+        boardCtx.restore();
+
+        // Draw center content (not rotated with board)
         drawCenterDiamond(centerX, centerY, st);
     }
 
@@ -557,48 +598,119 @@
     }
 
     function drawCenterDiamond(cx, cy, st) {
-        const diamondSize = boardSize * 0.35;
+        // Much larger center area - fills most of the inner board
+        const diamondSize = boardSize * 0.52;
+        const quadrantSize = diamondSize / 2;
+
         boardCtx.save();
         boardCtx.translate(cx, cy);
-        boardCtx.rotate(Math.PI / 4);
-        const quadrantSize = diamondSize / Math.sqrt(2);
-        const positions = [
-            { team: 1, x: -quadrantSize, y: -quadrantSize },
-            { team: 2, x: 0, y: -quadrantSize },
-            { team: 3, x: -quadrantSize, y: 0 },
-            { team: 4, x: 0, y: 0 }
+
+        // Team quadrants positioned as per reference image:
+        // T1 = Top (cyan), T2 = Right (coral), T3 = Left (plum), T4 = Bottom (green)
+        const quadrants = [
+            { team: 1, angle: -Math.PI/2, label: 'T1' },  // Top
+            { team: 2, angle: 0, label: 'T2' },           // Right
+            { team: 3, angle: Math.PI, label: 'T3' },     // Left
+            { team: 4, angle: Math.PI/2, label: 'T4' }    // Bottom
         ];
-        for (let p = 0; p < positions.length; p++) {
-            const pos = positions[p];
-            const color = TEAM_COLORS[pos.team];
-            const garden = st.gardens[pos.team];
+
+        // Draw each quadrant as a triangle slice
+        for (let q = 0; q < quadrants.length; q++) {
+            const quad = quadrants[q];
+            const color = TEAM_COLORS[quad.team];
+            const garden = st.gardens[quad.team];
+
+            boardCtx.save();
+            boardCtx.rotate(quad.angle);
+
+            // Draw quadrant background (triangle pointing outward)
+            boardCtx.beginPath();
+            boardCtx.moveTo(0, 0);
+            boardCtx.lineTo(-quadrantSize * 0.7, -quadrantSize);
+            boardCtx.lineTo(quadrantSize * 0.7, -quadrantSize);
+            boardCtx.closePath();
             boardCtx.fillStyle = hexToRgba(color, 0.7);
-            boardCtx.fillRect(pos.x, pos.y, quadrantSize, quadrantSize);
+            boardCtx.fill();
             boardCtx.strokeStyle = hexToRgba(color, 1);
             boardCtx.lineWidth = 3;
-            boardCtx.strokeRect(pos.x, pos.y, quadrantSize, quadrantSize);
-            drawMiniGarden(boardCtx, pos.x + quadrantSize / 2, pos.y + quadrantSize / 2, quadrantSize * 0.6, garden);
-            boardCtx.save();
-            boardCtx.rotate(-Math.PI / 4);
+            boardCtx.stroke();
+
+            // Draw Garden area (upper portion of quadrant)
+            const gardenY = -quadrantSize * 0.85;
+            const gardenSize = quadrantSize * 0.35;
+            drawMiniGarden(boardCtx, 0, gardenY, gardenSize, garden);
+
+            // Garden label
             boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 14px Arial';
+            boardCtx.font = 'bold 10px Arial';
             boardCtx.textAlign = 'center';
-            boardCtx.textBaseline = 'middle';
-            const labelX = (pos.x + quadrantSize / 2) * Math.cos(-Math.PI / 4) - (pos.y + quadrantSize * 0.15) * Math.sin(-Math.PI / 4);
-            const labelY = (pos.x + quadrantSize / 2) * Math.sin(-Math.PI / 4) + (pos.y + quadrantSize * 0.15) * Math.cos(-Math.PI / 4);
-            boardCtx.fillText(TEAM_NAMES[pos.team], labelX, labelY);
+            boardCtx.fillText('Garden', 0, gardenY + gardenSize/2 + 12);
+
+            // Draw Haystack area (middle portion)
+            const haystackY = -quadrantSize * 0.45;
+            boardCtx.fillStyle = '#D4A574';
+            drawRoundedRect(boardCtx, -20, haystackY - 15, 40, 30, 5);
+            boardCtx.fill();
+            boardCtx.strokeStyle = '#8B7355';
+            boardCtx.lineWidth = 2;
+            boardCtx.stroke();
+            boardCtx.font = '20px Arial';
+            boardCtx.fillText('🌾', 0, haystackY + 2);
+            boardCtx.fillStyle = '#fff';
+            boardCtx.font = 'bold 8px Arial';
+            boardCtx.fillText('Haystack', 0, haystackY + 20);
+
+            // Team label near center
+            boardCtx.fillStyle = '#fff';
+            boardCtx.font = 'bold 16px Arial';
+            boardCtx.textAlign = 'center';
+            boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
+            boardCtx.shadowBlur = 3;
+            boardCtx.fillText(quad.label, 0, -quadrantSize * 0.2);
+            boardCtx.shadowBlur = 0;
+
             boardCtx.restore();
         }
-        boardCtx.restore();
+
+        // Draw center elements: Community Chest and Chance
+        // Community Chest (left of center)
+        boardCtx.fillStyle = '#4169E1';
+        drawRoundedRect(boardCtx, -55, -20, 45, 40, 5);
+        boardCtx.fill();
+        boardCtx.strokeStyle = '#2E4A8E';
+        boardCtx.lineWidth = 2;
+        boardCtx.stroke();
         boardCtx.fillStyle = '#fff';
-        boardCtx.font = 'bold 20px Arial';
+        boardCtx.font = 'bold 7px Arial';
+        boardCtx.textAlign = 'center';
+        boardCtx.fillText('COMMUNITY', -32, -5);
+        boardCtx.fillText('CHEST', -32, 5);
+        boardCtx.font = '14px Arial';
+        boardCtx.fillText('📦', -32, 18);
+
+        // Chance (right of center)
+        boardCtx.fillStyle = '#FF8C00';
+        drawRoundedRect(boardCtx, 10, -20, 45, 40, 5);
+        boardCtx.fill();
+        boardCtx.strokeStyle = '#CC7000';
+        boardCtx.lineWidth = 2;
+        boardCtx.stroke();
+        boardCtx.fillStyle = '#fff';
+        boardCtx.font = 'bold 8px Arial';
+        boardCtx.fillText('CHANCE', 32, 0);
+        boardCtx.font = '14px Arial';
+        boardCtx.fillText('❓', 32, 15);
+
+        boardCtx.restore();
+
+        // "Click to Enter" text
+        boardCtx.fillStyle = '#fff';
+        boardCtx.font = 'bold 14px Arial';
         boardCtx.textAlign = 'center';
         boardCtx.textBaseline = 'middle';
-        boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
+        boardCtx.shadowColor = 'rgba(0,0,0,0.7)';
         boardCtx.shadowBlur = 4;
-        boardCtx.fillText('HARVEST', cx, cy - 10);
-        boardCtx.font = '14px Arial';
-        boardCtx.fillText('Click to Enter', cx, cy + 15);
+        boardCtx.fillText('Click to Enter Garden', cx, cy + diamondSize * 0.55);
         boardCtx.shadowBlur = 0;
     }
 
@@ -607,6 +719,12 @@
         const startX = x - size / 2;
         const startY = y - size / 2;
         const stageColors = ['#5D4037', '#6D4C41', '#7CB342', '#8BC34A', '#9CCC65'];
+
+        // Background
+        ctx.fillStyle = '#3E2723';
+        drawRoundedRect(ctx, startX - 2, startY - 2, size + 4, size + 4, 4);
+        ctx.fill();
+
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 4; col++) {
                 const plotIndex = row * 4 + col;
@@ -614,7 +732,7 @@
                 const px = startX + col * plotSize;
                 const py = startY + row * plotSize;
                 ctx.fillStyle = stageColors[plot.stage];
-                ctx.fillRect(px + 1, py + 1, plotSize - 2, plotSize - 2);
+                ctx.fillRect(px + 0.5, py + 0.5, plotSize - 1, plotSize - 1);
             }
         }
     }
@@ -635,9 +753,12 @@
     function resizeGardenCanvas() {
         const container = gardenCanvas.parentElement;
         const rect = container.getBoundingClientRect();
-        const size = Math.min(rect.width - 40, rect.height * 0.6, 500);
-        gardenCanvas.width = size;
-        gardenCanvas.height = size;
+        // Make garden much smaller - fit better on screen
+        const maxSize = Math.min(rect.width - 40, 350);
+        gardenCanvas.width = maxSize;
+        gardenCanvas.height = maxSize;
+        gardenCanvas.style.maxWidth = maxSize + 'px';
+        gardenCanvas.style.maxHeight = maxSize + 'px';
         renderGarden();
     }
 
@@ -645,11 +766,11 @@
         const st = getState();
         const garden = st.gardens[st.selectedTeam];
         gardenCtx.clearRect(0, 0, gardenCanvas.width, gardenCanvas.height);
-        const padding = 20;
+        const padding = 15;
         const gridSize = gardenCanvas.width - padding * 2;
         const plotSize = gridSize / 4;
         gardenCtx.fillStyle = '#3E2723';
-        drawRoundedRect(gardenCtx, padding / 2, padding / 2, gridSize + padding, gridSize + padding, 15);
+        drawRoundedRect(gardenCtx, padding / 2, padding / 2, gridSize + padding, gridSize + padding, 10);
         gardenCtx.fill();
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 4; col++) {
@@ -664,11 +785,11 @@
     }
 
     function drawPlot(x, y, size, plot, index) {
-        const gap = 4;
+        const gap = 3;
         const plotX = x + gap;
         const plotY = y + gap;
         const plotWidth = size - gap * 2;
-        const plotHeight = size - gap * 2 - 15;
+        const plotHeight = size - gap * 2 - 12;
         const anim = plotAnimations[index];
         let scale = 1;
         let glow = 0;
@@ -692,41 +813,41 @@
             gardenCtx.shadowBlur = glow;
         }
         gardenCtx.fillStyle = PLOT_COLORS[plot.stage];
-        drawRoundedRect(gardenCtx, plotX, plotY, plotWidth, plotHeight, 8);
+        drawRoundedRect(gardenCtx, plotX, plotY, plotWidth, plotHeight, 6);
         gardenCtx.fill();
         gardenCtx.strokeStyle = '#2E1B0F';
         gardenCtx.lineWidth = 2;
         gardenCtx.stroke();
         gardenCtx.shadowBlur = 0;
         if (plot.stage > 0) {
-            gardenCtx.font = (plotWidth * 0.5) + 'px Arial';
+            gardenCtx.font = (plotWidth * 0.45) + 'px Arial';
             gardenCtx.textAlign = 'center';
             gardenCtx.textBaseline = 'middle';
             gardenCtx.fillText(PLANT_EMOJIS[plot.stage], centerX, centerY);
         }
         const row = Math.floor(index / 4) + 1;
         const col = (index % 4) + 1;
-        gardenCtx.fillStyle = 'rgba(255,255,255,0.3)';
-        gardenCtx.font = '10px Arial';
+        gardenCtx.fillStyle = 'rgba(255,255,255,0.4)';
+        gardenCtx.font = 'bold 9px Arial';
         gardenCtx.textAlign = 'left';
         gardenCtx.textBaseline = 'top';
-        gardenCtx.fillText(row + ',' + col, plotX + 4, plotY + 4);
+        gardenCtx.fillText(row + ',' + col, plotX + 3, plotY + 2);
         gardenCtx.restore();
         const barX = plotX;
-        const barY = plotY + plotHeight + 4;
+        const barY = plotY + plotHeight + 2;
         const barWidth = plotWidth;
-        const barHeight = 8;
+        const barHeight = 6;
         gardenCtx.fillStyle = '#1a1a1a';
-        drawRoundedRect(gardenCtx, barX, barY, barWidth, barHeight, 4);
+        drawRoundedRect(gardenCtx, barX, barY, barWidth, barHeight, 3);
         gardenCtx.fill();
         const fillWidth = (plot.xp / 100) * barWidth;
         if (fillWidth > 0) {
             gardenCtx.fillStyle = getXPBarColor(plot.xp);
-            drawRoundedRect(gardenCtx, barX, barY, Math.max(fillWidth, 8), barHeight, 4);
+            drawRoundedRect(gardenCtx, barX, barY, Math.max(fillWidth, 6), barHeight, 3);
             gardenCtx.fill();
         }
         gardenCtx.fillStyle = '#fff';
-        gardenCtx.font = 'bold 7px Arial';
+        gardenCtx.font = 'bold 6px Arial';
         gardenCtx.textAlign = 'center';
         gardenCtx.textBaseline = 'middle';
         gardenCtx.fillText(plot.xp + '', barX + barWidth / 2, barY + barHeight / 2);
@@ -742,18 +863,18 @@
 
     function drawGridLabels(padding, plotSize) {
         gardenCtx.fillStyle = 'rgba(255,255,255,0.6)';
-        gardenCtx.font = 'bold 14px Arial';
+        gardenCtx.font = 'bold 12px Arial';
         gardenCtx.textAlign = 'right';
         gardenCtx.textBaseline = 'middle';
         for (let i = 0; i < 4; i++) {
             const y = padding + i * plotSize + plotSize / 2;
-            gardenCtx.fillText((i + 1).toString(), padding - 8, y);
+            gardenCtx.fillText((i + 1).toString(), padding - 5, y);
         }
         gardenCtx.textAlign = 'center';
         gardenCtx.textBaseline = 'bottom';
         for (let i = 0; i < 4; i++) {
             const x = padding + i * plotSize + plotSize / 2;
-            gardenCtx.fillText((i + 1).toString(), x, padding - 5);
+            gardenCtx.fillText((i + 1).toString(), x, padding - 3);
         }
     }
 
@@ -995,6 +1116,7 @@
         document.getElementById('board-view').classList.remove('active');
         document.getElementById('garden-view').classList.add('active');
         hideHUD();
+        resizeGardenCanvas();
         renderGarden();
         updateDiceButton();
     }

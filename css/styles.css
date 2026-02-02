@@ -51,15 +51,19 @@ body {
 /* Garden View */
 #garden-view {
     background: linear-gradient(180deg, #2d5a27 0%, #1a3518 100%);
-    padding: 20px;
-    gap: 15px;
+    padding: 10px;
+    gap: 10px;
+    overflow: hidden;
+    align-items: center;
 }
 
 #garden-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
+    padding: 5px 10px;
+    width: 100%;
+    max-width: 400px;
 }
 
 #haystack-display {
@@ -79,10 +83,10 @@ body {
 }
 
 #garden-canvas {
-    flex: 1;
-    width: 100%;
     border-radius: 15px;
     background: rgba(0, 0, 0, 0.3);
+    max-width: 350px;
+    max-height: 350px;
 }
 
 /* Dice Area */
@@ -90,31 +94,33 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 15px;
-    padding: 20px;
+    gap: 10px;
+    padding: 15px;
     background: rgba(0, 0, 0, 0.4);
     border-radius: 15px;
+    width: 100%;
+    max-width: 400px;
 }
 
 #dice-container {
     display: flex;
-    gap: 30px;
+    gap: 20px;
 }
 
 .die {
-    width: 80px;
-    height: 80px;
+    width: 65px;
+    height: 65px;
     background: linear-gradient(145deg, #ffffff, #e6e6e6);
-    border-radius: 15px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2.5em;
+    font-size: 2em;
     font-weight: bold;
     color: #333;
     box-shadow:
-        0 6px 0 #ccc,
-        0 8px 10px rgba(0, 0, 0, 0.4);
+        0 5px 0 #ccc,
+        0 7px 10px rgba(0, 0, 0, 0.4);
     transition: transform 0.1s;
 }
 
