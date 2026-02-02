@@ -134,6 +134,7 @@
     // Stage thresholds: 0, 50, 150, 400, 1000, then 2000+ with diminishing returns
     const STAGE_THRESHOLDS = [0, 50, 150, 400, 1000];
     const MAX_VISUAL_STAGE = 4; // Visual caps at stage 4 (sunflower)
+    const MAX_PLOT_XP = 1000; // XP for stage 4 (used for "full" check)
 
     function updateGardenPlot(team, plotIndex, xpGain) {
         const garden = state.gardens[team];
