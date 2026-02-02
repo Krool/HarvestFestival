@@ -784,7 +784,7 @@
         const wrapper = document.getElementById('garden-wrapper');
         if (!wrapper) return;
         const rect = wrapper.getBoundingClientRect();
-        const maxSize = Math.min(rect.width - 20, rect.height - 20, 320);
+        const maxSize = Math.min(rect.width - 20, rect.height - 20, 400);
         gardenCanvas.width = maxSize;
         gardenCanvas.height = maxSize;
         renderGarden();
@@ -1321,6 +1321,28 @@
         setTimeout(startHarvest, 300);
     }
 
+    function debugTriggerHarvest() {
+        playClick();
+        const st = getState();
+        const garden = st.gardens[st.selectedTeam];
+
+        // Fill all plots to 100 XP
+        for (let i = 0; i < garden.plots.length; i++) {
+            garden.plots[i].xp = 100;
+            garden.plots[i].stage = 4;
+        }
+
+        // Set harvest state
+        setNeedsHarvest(true);
+        saveState();
+        notifyStateListeners();
+
+        // Navigate to garden
+        playSwoosh();
+        setState({ currentView: 'garden' });
+        showGardenView();
+    }
+
     // ==================== GO BUTTON ====================
     function handleGoButton() {
         playClick();
@@ -1452,6 +1474,9 @@
         // Harvest handlers
         document.getElementById('harvest-trigger-btn').addEventListener('click', triggerHarvestFromBoard);
         document.getElementById('harvest-btn').addEventListener('click', startHarvest);
+
+        // Debug handler
+        document.getElementById('debug-harvest-btn').addEventListener('click', debugTriggerHarvest);
 
         // State updates
         subscribeState(function(st) {
