@@ -1317,6 +1317,38 @@
         setTimeout(startHarvest, 300);
     }
 
+    // ==================== GO BUTTON ====================
+    function handleGoButton() {
+        playClick();
+        playCoinCollect();
+
+        // Give seeds
+        const seedsToAdd = randomInt(1, 3);
+        addSeeds(seedsToAdd);
+
+        // Show floating notification
+        showFloatingReward('+' + seedsToAdd + ' 🌱');
+    }
+
+    function showFloatingReward(text) {
+        const goButton = document.getElementById('go-button');
+        const rect = goButton.getBoundingClientRect();
+
+        const notification = document.createElement('div');
+        notification.style.cssText = 'position:fixed;color:#4CAF50;font-size:24px;font-weight:bold;z-index:100;pointer-events:none;text-shadow:2px 2px 4px rgba(0,0,0,0.5);transition:all 0.8s ease-out;';
+        notification.style.left = (rect.left + rect.width / 2) + 'px';
+        notification.style.top = rect.top + 'px';
+        notification.textContent = text;
+        document.body.appendChild(notification);
+
+        requestAnimationFrame(function() {
+            notification.style.top = (rect.top - 60) + 'px';
+            notification.style.opacity = '0';
+        });
+
+        setTimeout(function() { notification.remove(); }, 800);
+    }
+
     // ==================== NAVIGATION ====================
     function navigateToGarden() {
         playClick();
@@ -1365,7 +1397,7 @@
         );
 
         // Navigation handlers
-        document.getElementById('go-button').addEventListener('click', navigateToGarden);
+        document.getElementById('go-button').addEventListener('click', handleGoButton);
         document.getElementById('garden-badge').addEventListener('click', navigateToGarden);
         document.getElementById('back-btn').addEventListener('click', navigateToBoard);
 

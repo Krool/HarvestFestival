@@ -223,14 +223,14 @@ body {
 #go-button {
     width: 100px;
     height: 100px;
-    background: linear-gradient(135deg, #FF6B35, #F7931E);
+    background: linear-gradient(135deg, #E53935, #C62828);
     border-radius: 20px;
     transform: rotate(45deg);
     display: flex;
     align-items: center;
     justify-content: center;
     box-shadow:
-        0 6px 0 #CC4400,
+        0 6px 0 #8E0000,
         0 10px 20px rgba(0,0,0,0.4);
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
@@ -239,7 +239,7 @@ body {
 #go-button:active {
     transform: rotate(45deg) translateY(3px);
     box-shadow:
-        0 3px 0 #CC4400,
+        0 3px 0 #8E0000,
         0 5px 10px rgba(0,0,0,0.4);
 }
 
