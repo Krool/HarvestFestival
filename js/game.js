@@ -817,6 +817,7 @@
         const startX = x - size / 2;
         const startY = y - size / 2;
         const stageColors = ['#5D4037', '#6D4C41', '#7CB342', '#8BC34A', '#9CCC65'];
+        const plantEmojis = ['', '🌱', '🌿', '🌾', '🌻'];
 
         ctx.fillStyle = '#3E2723';
         drawRoundedRect(ctx, startX - 1, startY - 1, size + 2, size + 2, 3);
@@ -830,6 +831,14 @@
                 const py = startY + row * plotSize;
                 ctx.fillStyle = stageColors[plot.stage];
                 ctx.fillRect(px + 0.5, py + 0.5, plotSize - 1, plotSize - 1);
+
+                // Draw plant emoji if stage > 0
+                if (plot.stage > 0) {
+                    ctx.font = (plotSize * 0.7) + 'px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(plantEmojis[plot.stage], px + plotSize / 2, py + plotSize / 2);
+                }
             }
         }
     }
