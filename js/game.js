@@ -59,6 +59,7 @@
             selectedTeam: 1,
             totalXP: 0,
             needsHarvest: false,
+            multiplier: 1,
             gardens: {
                 1: createGarden(),
                 2: createGarden(),
@@ -86,6 +87,7 @@
                 if (!state.coins) state.coins = 0;
                 if (!state.wins) state.wins = 0;
                 if (state.needsHarvest === undefined) state.needsHarvest = false;
+                if (!state.multiplier) state.multiplier = 1;
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
                     state.timerEnd = Date.now() + TIMER_DURATION;
@@ -117,12 +119,15 @@
         return state;
     }
 
+    const MAX_PLOT_XP = 1000;
+
     function updateGardenPlot(team, plotIndex, xpGain) {
         const garden = state.gardens[team];
         const plot = garden.plots[plotIndex];
-        plot.xp = Math.min(100, plot.xp + xpGain);
+        const actualGain = Math.min(MAX_PLOT_XP - plot.xp, xpGain);
+        plot.xp = Math.min(MAX_PLOT_XP, plot.xp + xpGain);
         plot.stage = getStageFromXP(plot.xp);
-        state.totalXP += xpGain;
+        state.totalXP += actualGain;
         saveState();
         notifyStateListeners();
         return plot;
@@ -132,9 +137,10 @@
         const garden = state.gardens[team];
         for (let i = 0; i < garden.plots.length; i++) {
             const plot = garden.plots[i];
-            plot.xp = Math.min(100, plot.xp + xpGain);
+            const actualGain = Math.min(MAX_PLOT_XP - plot.xp, xpGain);
+            plot.xp = Math.min(MAX_PLOT_XP, plot.xp + xpGain);
             plot.stage = getStageFromXP(plot.xp);
-            state.totalXP += xpGain;
+            state.totalXP += actualGain;
         }
         saveState();
         notifyStateListeners();
@@ -151,11 +157,28 @@
     }
 
     function getStageFromXP(xp) {
-        if (xp >= 100) return 4;
-        if (xp >= 75) return 3;
-        if (xp >= 50) return 2;
-        if (xp >= 25) return 1;
+        if (xp >= 1000) return 4;
+        if (xp >= 750) return 3;
+        if (xp >= 500) return 2;
+        if (xp >= 250) return 1;
         return 0;
+    }
+
+    function getXPForNextStage(xp) {
+        if (xp >= 1000) return { current: 1000, next: 1000, progress: 100 };
+        if (xp >= 750) return { current: xp - 750, next: 250, progress: (xp - 750) / 250 * 100 };
+        if (xp >= 500) return { current: xp - 500, next: 250, progress: (xp - 500) / 250 * 100 };
+        if (xp >= 250) return { current: xp - 250, next: 250, progress: (xp - 250) / 250 * 100 };
+        return { current: xp, next: 250, progress: xp / 250 * 100 };
+    }
+
+    function cycleMultiplier() {
+        const multipliers = [1, 3, 5, 10];
+        const currentIndex = multipliers.indexOf(state.multiplier);
+        const nextIndex = (currentIndex + 1) % multipliers.length;
+        state.multiplier = multipliers[nextIndex];
+        saveState();
+        notifyStateListeners();
     }
 
     function subscribeState(listener) {
@@ -197,9 +220,18 @@
     function checkGardenFull(team) {
         const garden = state.gardens[team];
         for (let i = 0; i < garden.plots.length; i++) {
-            if (garden.plots[i].xp < 100) return false;
+            if (garden.plots[i].xp < MAX_PLOT_XP) return false;
         }
         return true;
+    }
+
+    function getGardenTotalXP(team) {
+        const garden = state.gardens[team];
+        let total = 0;
+        for (let i = 0; i < garden.plots.length; i++) {
+            total += garden.plots[i].xp;
+        }
+        return total;
     }
 
     function setNeedsHarvest(value) {
@@ -568,11 +600,42 @@
     }
 
     function handleBoardDragEnd(e) {
+        // Check if it was a tap (not a drag)
+        if (totalDragDistance < DRAG_THRESHOLD) {
+            checkCenterClick(e.clientX, e.clientY);
+        }
         isDragging = false;
     }
 
     function handleBoardTouchEnd(e) {
+        // Check if it was a tap (not a drag)
+        if (totalDragDistance < DRAG_THRESHOLD && e.changedTouches && e.changedTouches.length > 0) {
+            checkCenterClick(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        }
         isDragging = false;
+    }
+
+    function checkCenterClick(clientX, clientY) {
+        const st = getState();
+        const rect = boardCanvas.getBoundingClientRect();
+        const canvasX = clientX - rect.left;
+        const canvasY = clientY - rect.top;
+
+        // Calculate center of the visible board
+        const centerX = boardCanvas.width / 2 + st.boardOffset.x;
+        const centerY = boardCanvas.height / 2 + st.boardOffset.y;
+
+        // Check if click is within center area (accounting for 45 degree rotation)
+        const dx = canvasX - centerX;
+        const dy = canvasY - centerY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Center clickable area radius (about half the quadrant area)
+        const centerRadius = boardSize * 0.2;
+
+        if (distance < centerRadius) {
+            navigateToGarden();
+        }
     }
 
     function renderBoard() {
@@ -872,7 +935,7 @@
 
         gardenCtx.restore();
 
-        // XP Bar
+        // XP Bar - shows progress to next stage
         const barX = plotX;
         const barY = plotY + plotHeight + 1;
         const barWidth = plotWidth;
@@ -882,7 +945,8 @@
         drawRoundedRect(gardenCtx, barX, barY, barWidth, barHeight, 2);
         gardenCtx.fill();
 
-        const fillWidth = (plot.xp / 100) * barWidth;
+        const stageProgress = getXPForNextStage(plot.xp);
+        const fillWidth = (stageProgress.progress / 100) * barWidth;
         if (fillWidth > 0) {
             gardenCtx.fillStyle = getXPBarColor(plot.xp);
             drawRoundedRect(gardenCtx, barX, barY, Math.max(fillWidth, 4), barHeight, 2);
@@ -891,10 +955,10 @@
     }
 
     function getXPBarColor(xp) {
-        if (xp >= 100) return '#FFD700';
-        if (xp >= 75) return '#FFA500';
-        if (xp >= 50) return '#90EE90';
-        if (xp >= 25) return '#4CAF50';
+        if (xp >= 1000) return '#FFD700';
+        if (xp >= 750) return '#FFA500';
+        if (xp >= 500) return '#90EE90';
+        if (xp >= 250) return '#4CAF50';
         return '#2E7D32';
     }
 
@@ -957,14 +1021,44 @@
 
     function updateDiceButton() {
         const st = getState();
+        const cost = st.multiplier || 1;
         const gardenFull = checkGardenFull(st.selectedTeam);
-        rollBtn.disabled = st.seeds < 1 || isRolling || st.needsHarvest || gardenFull;
+        rollBtn.disabled = st.seeds < cost || isRolling || st.needsHarvest || gardenFull;
+
+        // Update roll cost display
+        const rollCost = document.querySelector('.roll-cost');
+        if (rollCost) {
+            rollCost.textContent = '-' + cost + ' 🌱';
+        }
+
+        // Update multiplier button
+        updateMultiplierButton(st);
+    }
+
+    function updateMultiplierButton(st) {
+        const btn = document.getElementById('multiplier-btn');
+        if (!btn) return;
+
+        const mult = st.multiplier || 1;
+        btn.textContent = mult + 'x';
+
+        // Update button color based on multiplier
+        btn.classList.remove('x3', 'x5', 'x10');
+        if (mult === 3) btn.classList.add('x3');
+        else if (mult === 5) btn.classList.add('x5');
+        else if (mult === 10) btn.classList.add('x10');
+    }
+
+    function handleMultiplierClick() {
+        playClick();
+        cycleMultiplier();
     }
 
     function handleRoll() {
         const st = getState();
-        if (st.seeds < 1 || isRolling) return;
-        if (!consumeSeeds(1)) return;
+        const cost = st.multiplier || 1;
+        if (st.seeds < cost || isRolling) return;
+        if (!consumeSeeds(cost)) return;
 
         isRolling = true;
         updateDiceButton();
@@ -1005,7 +1099,8 @@
     function processRoll(roll1, roll2) {
         const st = getState();
         const team = st.selectedTeam;
-        const XP_GAIN = 15;
+        const multiplier = st.multiplier || 1;
+        const XP_GAIN = 15 * multiplier;
         let result = { die1: roll1, die2: roll2, type: '', affectedPlots: [], message: '' };
 
         if (roll1 === '2x' && roll2 === '2x') {
@@ -1059,15 +1154,6 @@
             }
         }
         renderGarden();
-
-        // Check if garden is now full
-        const st = getState();
-        if (checkGardenFull(st.selectedTeam)) {
-            setTimeout(function() {
-                setNeedsHarvest(true);
-                updateAllUI(getState());
-            }, 600);
-        }
     }
 
     // ==================== UI UPDATE ====================
@@ -1098,7 +1184,7 @@
 
         // Event progress
         const totalProgress = getTotalProgress();
-        const maxProgress = 6400; // 4 teams * 16 plots * 100 xp
+        const maxProgress = 4 * 16 * MAX_PLOT_XP; // 4 teams * 16 plots * 1000 xp
         const progressPercent = Math.min(100, (totalProgress / maxProgress) * 100);
 
         const progressFill = document.getElementById('event-progress-fill');
@@ -1123,10 +1209,11 @@
         const harvestBtnArea = document.getElementById('harvest-button-area');
         const diceArea = document.getElementById('dice-area');
 
-        // Check if current garden is full
-        const gardenFull = checkGardenFull(st.selectedTeam);
+        // Check if garden has any XP to harvest
+        const gardenXP = getGardenTotalXP(st.selectedTeam);
+        const hasXPToHarvest = gardenXP > 0;
 
-        if (st.needsHarvest || gardenFull) {
+        if (st.needsHarvest) {
             // Show harvest trigger on board
             if (harvestTrigger) harvestTrigger.classList.remove('hidden');
 
@@ -1134,13 +1221,8 @@
             if (rollBtnArea) rollBtnArea.classList.add('hidden');
             if (harvestBtnArea) harvestBtnArea.classList.remove('hidden');
             if (diceArea) diceArea.style.opacity = '0.5';
-
-            // Set needs harvest if garden is full
-            if (gardenFull && !st.needsHarvest) {
-                setNeedsHarvest(true);
-            }
         } else {
-            // Hide harvest trigger
+            // Hide harvest trigger on board (can still access via garden)
             if (harvestTrigger) harvestTrigger.classList.add('hidden');
 
             // Show roll button
@@ -1323,19 +1405,9 @@
 
     function debugTriggerHarvest() {
         playClick();
-        const st = getState();
-        const garden = st.gardens[st.selectedTeam];
 
-        // Fill all plots to 100 XP
-        for (let i = 0; i < garden.plots.length; i++) {
-            garden.plots[i].xp = 100;
-            garden.plots[i].stage = 4;
-        }
-
-        // Set harvest state
+        // Set harvest state (harvest whatever is currently in garden)
         setNeedsHarvest(true);
-        saveState();
-        notifyStateListeners();
 
         // Navigate to garden
         playSwoosh();
@@ -1477,6 +1549,9 @@
 
         // Debug handler
         document.getElementById('debug-harvest-btn').addEventListener('click', debugTriggerHarvest);
+
+        // Multiplier button
+        document.getElementById('multiplier-btn').addEventListener('click', handleMultiplierClick);
 
         // State updates
         subscribeState(function(st) {
