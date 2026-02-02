@@ -1,0 +1,10 @@
+# Claude Code
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Design documents (optional - remove if you want to include)
+*.pdf
+design.txt

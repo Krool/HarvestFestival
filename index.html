@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Harvest Festival</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Main Board View -->
+        <div id="board-view" class="view active">
+            <canvas id="board-canvas"></canvas>
+        </div>
+
+        <!-- Garden View -->
+        <div id="garden-view" class="view">
+            <div id="garden-header">
+                <button id="back-btn" class="btn">← Back</button>
+                <div id="haystack-display">
+                    <span class="haystack-icon">🌾</span>
+                    <span id="seed-count">50</span> Seeds
+                </div>
+            </div>
+            <canvas id="garden-canvas"></canvas>
+            <div id="dice-area">
+                <div id="dice-container">
+                    <div id="die1" class="die">1</div>
+                    <div id="die2" class="die">1</div>
+                </div>
+                <button id="roll-btn" class="btn btn-primary">Roll Dice (1 Seed)</button>
+                <div id="roll-result"></div>
+            </div>
+        </div>
+
+        <!-- HUD Overlay -->
+        <div id="hud" class="hud-visible">
+            <div id="hud-badge">
+                <div id="hud-seeds">
+                    <span class="seed-icon">🌱</span>
+                    <span id="hud-seed-count">50</span>
+                </div>
+                <div id="hud-timer">12:00:00</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/game.js"></script>
+</body>
+</html>
