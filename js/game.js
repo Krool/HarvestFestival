@@ -808,6 +808,28 @@
             const gardenOffsetY = quadCenterY * 0.75;
             drawMiniGarden(boardCtx, gardenOffsetX, gardenOffsetY, gardenSize, garden);
 
+            // Team haystack - offset from center toward outer edge of quadrant
+            const teamPoints = st.haystackPoints[quad.team] || 0;
+            if (teamPoints > 0) {
+                // Position haystack between garden and outer edge, with offset based on team
+                const haystackOffsetX = pts[0][0] * 0.55;
+                const haystackOffsetY = pts[0][1] * 0.55;
+
+                // Draw small haystack icon
+                boardCtx.font = '18px Arial';
+                boardCtx.textAlign = 'center';
+                boardCtx.textBaseline = 'middle';
+                boardCtx.fillText('🌾', haystackOffsetX, haystackOffsetY);
+
+                // Show points underneath
+                boardCtx.fillStyle = '#fff';
+                boardCtx.font = 'bold 8px Arial';
+                boardCtx.shadowColor = 'rgba(0,0,0,0.8)';
+                boardCtx.shadowBlur = 2;
+                boardCtx.fillText(teamPoints, haystackOffsetX, haystackOffsetY + 12);
+                boardCtx.shadowBlur = 0;
+            }
+
             // Team label near outer edge
             boardCtx.fillStyle = '#fff';
             boardCtx.font = 'bold 10px Arial';
@@ -820,7 +842,7 @@
         }
 
         // Community Chest - top corner of Team 2 (red/right quadrant)
-        boardCtx.font = '16px Arial';
+        boardCtx.font = '48px Arial';
         boardCtx.textAlign = 'center';
         boardCtx.textBaseline = 'middle';
         boardCtx.fillText('📦', centerDiamondSize * 0.5, -centerDiamondSize * 0.5);
@@ -830,21 +852,21 @@
 
         // Central haystack - grows with harvests
         const haystackSize = st.centralHaystackSize || 1;
-        const baseSize = 20;
-        const maxSize = 50;
+        const baseSize = 40;
+        const maxSize = 90;
         const currentSize = baseSize + (haystackSize - 1) * ((maxSize - baseSize) / 9);
 
         // Draw haystack background
         boardCtx.fillStyle = '#D4A574';
         boardCtx.beginPath();
-        boardCtx.arc(0, 0, currentSize / 2 + 4, 0, Math.PI * 2);
+        boardCtx.arc(0, 0, currentSize / 2 + 6, 0, Math.PI * 2);
         boardCtx.fill();
         boardCtx.strokeStyle = '#8B7355';
-        boardCtx.lineWidth = 2;
+        boardCtx.lineWidth = 3;
         boardCtx.stroke();
 
         // Draw multiple hay emojis based on size
-        const hayFontSize = Math.max(14, Math.min(28, currentSize * 0.8));
+        const hayFontSize = Math.max(24, Math.min(50, currentSize * 0.8));
         boardCtx.font = hayFontSize + 'px Arial';
         boardCtx.fillText('🌾', 0, 0);
 
@@ -1082,7 +1104,7 @@
     }
 
     // ==================== DICE ====================
-    const DIE_FACES = [1, 2, 3, 4, '2x'];
+    const DIE_FACES = [1, 2, 3, 4, 'ALL'];
     let die1Element, die2Element, rollBtn, resultElement;
     let isRolling = false;
 
@@ -1103,7 +1125,13 @@
         // Update roll cost display
         const rollCost = document.querySelector('.roll-cost');
         if (rollCost) {
-            rollCost.textContent = '-' + cost + ' 🌱';
+            rollCost.textContent = '-' + cost;
+        }
+
+        // Update seed count near roll button
+        const rollSeedCount = document.getElementById('roll-seed-count');
+        if (rollSeedCount) {
+            rollSeedCount.textContent = st.seeds;
         }
 
         // Update multiplier button
@@ -1157,8 +1185,8 @@
             die2Element.textContent = roll2;
             die1Element.classList.remove('rolling');
             die2Element.classList.remove('rolling');
-            die1Element.classList.toggle('double', roll1 === '2x');
-            die2Element.classList.toggle('double', roll2 === '2x');
+            die1Element.classList.toggle('double', roll1 === 'ALL');
+            die2Element.classList.toggle('double', roll2 === 'ALL');
 
             playDiceLand();
 
@@ -1178,14 +1206,14 @@
         const XP_GAIN = 15 * multiplier;
         let result = { die1: roll1, die2: roll2, type: '', affectedPlots: [], message: '' };
 
-        if (roll1 === '2x' && roll2 === '2x') {
+        if (roll1 === 'ALL' && roll2 === 'ALL') {
             result.type = 'fullBoard';
             result.message = 'JACKPOT! All plots +XP!';
             result.affectedPlots = [];
             for (let i = 0; i < 16; i++) result.affectedPlots.push(i);
             addXPToAllPlots(team, XP_GAIN);
             playFullBoardFanfare();
-        } else if (roll1 === '2x') {
+        } else if (roll1 === 'ALL') {
             const col = roll2 - 1;
             result.type = 'column';
             result.message = 'Column ' + roll2 + '!';
@@ -1194,7 +1222,7 @@
                 updateGardenPlot(team, result.affectedPlots[i], XP_GAIN);
             }
             playRowHit();
-        } else if (roll2 === '2x') {
+        } else if (roll2 === 'ALL') {
             const row = roll1 - 1;
             result.type = 'row';
             result.message = 'Row ' + roll1 + '!';
@@ -1306,27 +1334,16 @@
     }
 
     function updateHarvestUI(st) {
-        const harvestTrigger = document.getElementById('harvest-trigger-btn');
         const rollBtnArea = document.getElementById('roll-button-area');
         const harvestBtnArea = document.getElementById('harvest-button-area');
         const diceArea = document.getElementById('dice-area');
 
-        // Check if garden has any XP to harvest
-        const gardenXP = getGardenTotalXP(st.selectedTeam);
-        const hasXPToHarvest = gardenXP > 0;
-
         if (st.needsHarvest) {
-            // Show harvest trigger on board
-            if (harvestTrigger) harvestTrigger.classList.remove('hidden');
-
             // In garden view, show harvest button instead of roll
             if (rollBtnArea) rollBtnArea.classList.add('hidden');
             if (harvestBtnArea) harvestBtnArea.classList.remove('hidden');
             if (diceArea) diceArea.style.opacity = '0.5';
         } else {
-            // Hide harvest trigger on board (can still access via garden)
-            if (harvestTrigger) harvestTrigger.classList.add('hidden');
-
             // Show roll button
             if (rollBtnArea) rollBtnArea.classList.remove('hidden');
             if (harvestBtnArea) harvestBtnArea.classList.add('hidden');
@@ -1507,16 +1524,28 @@
         // Calculate rankings for crowns
         const rankings = getTeamRankings(points);
 
-        // Update haystack count with player's points
+        // Update haystack count with player's points (no crown here)
         const haystackCount = document.getElementById('haystack-count');
         if (haystackCount) {
-            const crown = rankings[1];
-            const crownEmoji = crown === 1 ? '👑' : crown === 2 ? '🥈' : crown === 3 ? '🥉' : '';
-            haystackCount.textContent = (points[1] || 0) + (crownEmoji ? ' ' + crownEmoji : '');
+            haystackCount.textContent = points[1] || 0;
         }
+
+        // Update crowns in team legend
+        updateTeamCrowns(rankings);
 
         // Update the team progress bar
         updateTeamProgressBar(points, totalPoints);
+    }
+
+    function updateTeamCrowns(rankings) {
+        const crownEmojis = { 1: '👑', 2: '🥈', 3: '🥉', 0: '' };
+
+        for (let team = 1; team <= 4; team++) {
+            const crownEl = document.getElementById('crown-' + team);
+            if (crownEl) {
+                crownEl.textContent = crownEmojis[rankings[team]] || '';
+            }
+        }
     }
 
     function getTeamRankings(points) {
@@ -1655,6 +1684,41 @@
         saveState();
     }
 
+    function allyGrowPlayerGarden() {
+        // Allies help grow the player's garden (Team 1) at half the rate of other teams
+        const st = getState();
+        const garden = st.gardens[1]; // Player's garden
+
+        // Find plots that need growth (prioritize lower XP plots)
+        const plotsByXP = [];
+        for (let i = 0; i < 16; i++) {
+            if (garden.plots[i].xp < MAX_PLOT_XP) {
+                plotsByXP.push({ index: i, xp: garden.plots[i].xp });
+            }
+        }
+        if (plotsByXP.length === 0) return null; // Garden is full
+
+        plotsByXP.sort((a, b) => a.xp - b.xp);
+
+        // Grow 1 plot (half the rate of other teams which grow 1-3)
+        const plotIndex = plotsByXP[0].index;
+        const currentXP = garden.plots[plotIndex].xp;
+
+        // XP gain is half of what other teams get
+        let xpGain;
+        if (currentXP < 50) xpGain = randomInt(8, 15);
+        else if (currentXP < 150) xpGain = randomInt(10, 20);
+        else if (currentXP < 400) xpGain = randomInt(15, 30);
+        else xpGain = randomInt(20, 40);
+
+        garden.plots[plotIndex].xp += xpGain;
+        garden.plots[plotIndex].stage = getStageFromXP(garden.plots[plotIndex].xp);
+        st.totalXP += xpGain;
+        saveState();
+
+        return { plotIndex: plotIndex, xpGain: xpGain };
+    }
+
     let teammateInterval = null;
 
     function startTeammateSimulation() {
@@ -1663,10 +1727,13 @@
         teammateInterval = setInterval(function() {
             const st = getState();
             if (st.currentView === 'garden') {
-                // Higher chance for teammate to add seeds (40% every 1.5 seconds)
+                // Higher chance for teammate to add seeds AND grow plants (40% every 1.5 seconds)
                 if (Math.random() < 0.4) {
                     const seedAmount = randomInt(2, 8);
                     addSeeds(seedAmount);
+
+                    // Ally also grows a plant in player's garden
+                    const growResult = allyGrowPlayerGarden();
 
                     // Show floating notification
                     const gardenCanvas = document.getElementById('garden-canvas');
@@ -1676,8 +1743,20 @@
                         const y = rect.top + 20;
                         const teammates = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Riley', 'Casey'];
                         const name = teammates[randomInt(0, 5)];
+
+                        // Show seeds notification
                         showFloatingText(name + ' +' + seedAmount + ' 🌱', x, y, '#4CAF50');
                         playCoinCollect();
+
+                        // If a plot was grown, animate it and show XP notification
+                        if (growResult) {
+                            animatePlot(growResult.plotIndex);
+                            const row = Math.floor(growResult.plotIndex / 4) + 1;
+                            const col = (growResult.plotIndex % 4) + 1;
+                            setTimeout(function() {
+                                showFloatingText('+' + growResult.xpGain + ' XP (' + row + ',' + col + ')', x, y + 25, '#FFD700');
+                            }, 200);
+                        }
                     }
                 }
 
@@ -1957,7 +2036,6 @@
         document.getElementById('back-btn').addEventListener('click', navigateToBoard);
 
         // Harvest handlers
-        document.getElementById('harvest-trigger-btn').addEventListener('click', triggerHarvestFromBoard);
         document.getElementById('harvest-btn').addEventListener('click', startHarvest);
 
         // Debug handler

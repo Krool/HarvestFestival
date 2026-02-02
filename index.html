@@ -58,10 +58,6 @@
                         <span class="go-text">GO</span>
                     </div>
                 </div>
-                <button id="harvest-trigger-btn" class="harvest-trigger hidden">
-                    <span class="harvest-icon">🌾</span>
-                    <span class="harvest-label">HARVEST</span>
-                </button>
             </div>
 
             <!-- Bottom Nav -->
@@ -109,11 +105,11 @@
             <!-- Team Progress Bar -->
             <div id="team-progress-container">
                 <div id="team-progress-bar"></div>
-                <div class="team-legend">
-                    <span class="legend-item t1">You</span>
-                    <span class="legend-item t2">T2</span>
-                    <span class="legend-item t3">T3</span>
-                    <span class="legend-item t4">T4</span>
+                <div class="team-legend" id="team-legend">
+                    <span class="legend-item t1"><span class="crown" id="crown-1"></span>You</span>
+                    <span class="legend-item t2"><span class="crown" id="crown-2"></span>T2</span>
+                    <span class="legend-item t3"><span class="crown" id="crown-3"></span>T3</span>
+                    <span class="legend-item t4"><span class="crown" id="crown-4"></span>T4</span>
                 </div>
                 <div class="garden-timer">
                     <span>🌾 Harvest Festival: </span>
@@ -129,19 +125,31 @@
             <!-- Dice Area -->
             <div id="dice-area">
                 <div id="dice-container">
-                    <div id="die1" class="die">1</div>
-                    <div id="die2" class="die">1</div>
+                    <div class="die-wrapper">
+                        <div class="die-label">ROW</div>
+                        <div id="die1" class="die">1</div>
+                    </div>
+                    <div class="die-wrapper">
+                        <div class="die-label">COL</div>
+                        <div id="die2" class="die">1</div>
+                    </div>
                 </div>
                 <div id="roll-result"></div>
-                <button id="multiplier-btn" class="multiplier-button">1x</button>
             </div>
 
             <!-- Roll Button -->
             <div id="roll-button-area">
-                <button id="roll-btn" class="roll-button">
-                    <span class="roll-text">ROLL</span>
-                    <span class="roll-cost">-1 🌱</span>
-                </button>
+                <div class="roll-controls">
+                    <button id="multiplier-btn" class="multiplier-button">1x</button>
+                    <button id="roll-btn" class="roll-button">
+                        <span class="roll-text">ROLL</span>
+                    </button>
+                    <div class="roll-seed-cost">
+                        <span class="roll-cost">-1</span>
+                        <span>🌱</span>
+                        <span id="roll-seed-count">50</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Harvest Button (shown when ready) -->

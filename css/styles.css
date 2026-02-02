@@ -479,6 +479,10 @@ body {
 .legend-item.t3 { background: #DDA0DD; }
 .legend-item.t4 { background: #90EE90; color: #333; }
 
+.legend-item .crown {
+    margin-right: 2px;
+}
+
 .garden-timer {
     text-align: center;
     margin-top: 6px;
@@ -521,12 +525,26 @@ body {
 
 #dice-container {
     display: flex;
-    gap: 20px;
+    gap: 30px;
+}
+
+.die-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.die-label {
+    color: #FFE4B5;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
 .die {
-    width: 65px;
-    height: 65px;
+    width: 60px;
+    height: 60px;
     background: linear-gradient(145deg, #ffffff 0%, #f5f5f5 50%, #e0e0e0 100%);
     border-radius: 14px;
     display: flex;
@@ -602,26 +620,32 @@ body {
 
 /* Roll Button Area */
 #roll-button-area {
-    padding: 10px 20px 20px;
+    padding: 8px 20px 15px;
+}
+
+.roll-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
 }
 
 .roll-button {
-    width: 100%;
-    padding: 18px;
+    padding: 12px 30px;
     border: none;
-    border-radius: 18px;
+    border-radius: 15px;
     background: linear-gradient(180deg, #FF8A65 0%, #FF5722 50%, #E64A19 100%);
     box-shadow:
-        0 5px 0 #BF360C,
-        0 10px 20px rgba(0,0,0,0.4),
+        0 4px 0 #BF360C,
+        0 8px 15px rgba(0,0,0,0.4),
         inset 0 2px 0 rgba(255,255,255,0.3);
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.1s;
-    border: 3px solid #FFAB91;
+    border: 2px solid #FFAB91;
 }
 
 .roll-button:active {
-    transform: translateY(3px);
+    transform: translateY(2px);
     box-shadow:
         0 2px 0 #BF360C,
         0 4px 8px rgba(0,0,0,0.3);
@@ -629,9 +653,25 @@ body {
 
 .roll-button:disabled {
     background: linear-gradient(180deg, #9E9E9E 0%, #757575 50%, #616161 100%);
-    box-shadow: 0 5px 0 #424242;
+    box-shadow: 0 4px 0 #424242;
     border-color: #BDBDBD;
     cursor: not-allowed;
+}
+
+.roll-seed-cost {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0,0,0,0.3);
+    padding: 6px 10px;
+    border-radius: 12px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.roll-cost {
+    color: #FF6B6B;
 }
 
 .roll-text {
