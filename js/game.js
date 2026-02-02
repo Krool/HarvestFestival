@@ -808,37 +808,27 @@
             const gardenOffsetY = quadCenterY * 0.75;
             drawMiniGarden(boardCtx, gardenOffsetX, gardenOffsetY, gardenSize, garden);
 
-            // Team haystack - offset from center toward outer edge of quadrant
+            // Team haystack - positioned at side corner of quadrant (inverted from outer tip)
             const teamPoints = st.haystackPoints[quad.team] || 0;
             if (teamPoints > 0) {
-                // Position haystack near outer edge of quadrant (tripled offset)
-                const haystackOffsetX = pts[0][0] * 0.9;
-                const haystackOffsetY = pts[0][1] * 0.9;
+                // Use pts[1] (clockwise corner) instead of pts[0] (outer tip) to invert position
+                const haystackOffsetX = pts[1][0] * 0.7;
+                const haystackOffsetY = pts[1][1] * 0.7;
 
-                // Draw small haystack icon
-                boardCtx.font = '18px Arial';
+                // Draw haystack icon (50% bigger: 18px -> 27px)
+                boardCtx.font = '27px Arial';
                 boardCtx.textAlign = 'center';
                 boardCtx.textBaseline = 'middle';
                 boardCtx.fillText('🌾', haystackOffsetX, haystackOffsetY);
 
                 // Show points underneath
                 boardCtx.fillStyle = '#fff';
-                boardCtx.font = 'bold 8px Arial';
+                boardCtx.font = 'bold 10px Arial';
                 boardCtx.shadowColor = 'rgba(0,0,0,0.8)';
                 boardCtx.shadowBlur = 2;
-                boardCtx.fillText(teamPoints, haystackOffsetX, haystackOffsetY + 12);
+                boardCtx.fillText(teamPoints, haystackOffsetX, haystackOffsetY + 18);
                 boardCtx.shadowBlur = 0;
             }
-
-            // Team label near outer edge
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 10px Arial';
-            boardCtx.textAlign = 'center';
-            boardCtx.textBaseline = 'middle';
-            boardCtx.shadowColor = 'rgba(0,0,0,0.7)';
-            boardCtx.shadowBlur = 2;
-            boardCtx.fillText(TEAM_NAMES[quad.team], pts[0][0] * 0.85, pts[0][1] * 0.85);
-            boardCtx.shadowBlur = 0;
         }
 
         // Community Chest - top tip of cyan/blue quadrant (Team 1)
