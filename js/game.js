@@ -811,9 +811,9 @@
             // Team haystack - offset from center toward outer edge of quadrant
             const teamPoints = st.haystackPoints[quad.team] || 0;
             if (teamPoints > 0) {
-                // Position haystack between garden and outer edge, with offset based on team
-                const haystackOffsetX = pts[0][0] * 0.55;
-                const haystackOffsetY = pts[0][1] * 0.55;
+                // Position haystack near outer edge of quadrant (tripled offset)
+                const haystackOffsetX = pts[0][0] * 0.9;
+                const haystackOffsetY = pts[0][1] * 0.9;
 
                 // Draw small haystack icon
                 boardCtx.font = '18px Arial';
