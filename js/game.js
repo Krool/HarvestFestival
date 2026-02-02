@@ -666,19 +666,19 @@
     }
 
     function drawCenterArea(cx, cy, st) {
-        const centerSize = boardSize * 0.52;
-        const quadSize = centerSize * 0.46;
-        const gap = 4;
+        const quadSize = boardSize * 0.28;
+        const distFromCenter = quadSize * 0.75;
 
         boardCtx.save();
         boardCtx.translate(cx, cy);
 
-        // Team quadrants as 2x2 grid of squares
+        // Team quadrants rotated 45 degrees, positioned around center
+        // Each quadrant has haystack pointing toward center
         const quadrants = [
-            { team: 1, x: -quadSize - gap/2, y: -quadSize - gap/2 }, // Top-left
-            { team: 2, x: gap/2, y: -quadSize - gap/2 },             // Top-right
-            { team: 3, x: -quadSize - gap/2, y: gap/2 },             // Bottom-left
-            { team: 4, x: gap/2, y: gap/2 }                          // Bottom-right
+            { team: 1, angle: 0, x: 0, y: -distFromCenter },           // Top
+            { team: 2, angle: Math.PI/2, x: distFromCenter, y: 0 },    // Right
+            { team: 3, angle: Math.PI, x: 0, y: distFromCenter },      // Bottom
+            { team: 4, angle: -Math.PI/2, x: -distFromCenter, y: 0 }   // Left
         ];
 
         for (let q = 0; q < quadrants.length; q++) {
@@ -686,57 +686,61 @@
             const color = TEAM_COLORS[quad.team];
             const garden = st.gardens[quad.team];
 
-            // Square quadrant background
+            boardCtx.save();
+            boardCtx.translate(quad.x, quad.y);
+            boardCtx.rotate(quad.angle);
+
+            // Square quadrant background (rotated 45 deg via the angle)
             boardCtx.fillStyle = hexToRgba(color, 0.85);
-            drawRoundedRect(boardCtx, quad.x, quad.y, quadSize, quadSize, 6);
+            drawRoundedRect(boardCtx, -quadSize/2, -quadSize/2, quadSize, quadSize, 6);
             boardCtx.fill();
             boardCtx.strokeStyle = hexToRgba(color, 1);
             boardCtx.lineWidth = 2;
             boardCtx.stroke();
 
-            // Mini garden (top portion of quadrant)
-            const gardenSize = quadSize * 0.55;
-            const gardenX = quad.x + (quadSize - gardenSize) / 2;
-            const gardenY = quad.y + 6;
-            drawMiniGarden(boardCtx, gardenX + gardenSize/2, gardenY + gardenSize/2, gardenSize, garden);
+            // Mini garden (away from center - top of rotated quadrant)
+            const gardenSize = quadSize * 0.52;
+            drawMiniGarden(boardCtx, 0, -quadSize/2 + gardenSize/2 + 4, gardenSize, garden);
 
-            // Haystack (bottom portion)
-            const haystackY = quad.y + gardenSize + 10;
+            // Team label (middle area)
+            boardCtx.fillStyle = '#fff';
+            boardCtx.font = 'bold 10px Arial';
+            boardCtx.textAlign = 'center';
+            boardCtx.textBaseline = 'middle';
+            boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
+            boardCtx.shadowBlur = 2;
+            boardCtx.fillText(TEAM_NAMES[quad.team], 0, 0);
+            boardCtx.shadowBlur = 0;
+
+            // Haystack (toward center - bottom of rotated quadrant)
             boardCtx.fillStyle = '#D4A574';
-            drawRoundedRect(boardCtx, quad.x + quadSize/2 - 18, haystackY, 36, 20, 4);
+            drawRoundedRect(boardCtx, -16, quadSize/2 - 24, 32, 18, 4);
             boardCtx.fill();
             boardCtx.strokeStyle = '#8B7355';
             boardCtx.lineWidth = 1;
             boardCtx.stroke();
-            boardCtx.font = '14px Arial';
-            boardCtx.textAlign = 'center';
-            boardCtx.fillText('🌾', quad.x + quadSize/2, haystackY + 14);
+            boardCtx.font = '12px Arial';
+            boardCtx.fillText('🌾', 0, quadSize/2 - 12);
 
-            // Team label
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 10px Arial';
-            boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
-            boardCtx.shadowBlur = 2;
-            boardCtx.fillText(TEAM_NAMES[quad.team], quad.x + quadSize/2, quad.y + quadSize - 6);
-            boardCtx.shadowBlur = 0;
+            boardCtx.restore();
         }
 
         // Center overlay: Community Chest & Chance (small in the very center)
         boardCtx.fillStyle = 'rgba(200,230,201,0.9)';
-        drawRoundedRect(boardCtx, -25, -18, 50, 36, 6);
+        drawRoundedRect(boardCtx, -22, -15, 44, 30, 6);
         boardCtx.fill();
 
         boardCtx.fillStyle = '#4169E1';
-        drawRoundedRect(boardCtx, -20, -12, 18, 18, 3);
+        drawRoundedRect(boardCtx, -18, -10, 16, 16, 3);
         boardCtx.fill();
         boardCtx.font = '10px Arial';
         boardCtx.textAlign = 'center';
-        boardCtx.fillText('📦', -11, 2);
+        boardCtx.fillText('📦', -10, 4);
 
         boardCtx.fillStyle = '#FF8C00';
-        drawRoundedRect(boardCtx, 2, -12, 18, 18, 3);
+        drawRoundedRect(boardCtx, 2, -10, 16, 16, 3);
         boardCtx.fill();
-        boardCtx.fillText('❓', 11, 2);
+        boardCtx.fillText('❓', 10, 4);
 
         boardCtx.restore();
     }
