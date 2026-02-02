@@ -1,4 +1,4 @@
-// Harvest Festival - Single File Build
+// Harvest Festival - Single File Build (Monopoly Go Style)
 (function() {
     'use strict';
 
@@ -52,9 +52,11 @@
         const now = Date.now();
         return {
             seeds: 50,
+            coins: 0,
             timerEnd: now + TIMER_DURATION,
             currentView: 'board',
             selectedTeam: 1,
+            totalXP: 0,
             gardens: {
                 1: createGarden(),
                 2: createGarden(),
@@ -78,6 +80,8 @@
         if (saved) {
             try {
                 state = JSON.parse(saved);
+                if (!state.totalXP) state.totalXP = 0;
+                if (!state.coins) state.coins = 0;
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
                     state.timerEnd = Date.now() + TIMER_DURATION;
@@ -114,6 +118,7 @@
         const plot = garden.plots[plotIndex];
         plot.xp = Math.min(100, plot.xp + xpGain);
         plot.stage = getStageFromXP(plot.xp);
+        state.totalXP += xpGain;
         saveState();
         notifyStateListeners();
         return plot;
@@ -125,6 +130,7 @@
             const plot = garden.plots[i];
             plot.xp = Math.min(100, plot.xp + xpGain);
             plot.stage = getStageFromXP(plot.xp);
+            state.totalXP += xpGain;
         }
         saveState();
         notifyStateListeners();
@@ -174,6 +180,16 @@
         return 0;
     }
 
+    function getTotalProgress() {
+        let total = 0;
+        for (let t = 1; t <= 4; t++) {
+            for (let i = 0; i < 16; i++) {
+                total += state.gardens[t].plots[i].xp;
+            }
+        }
+        return total;
+    }
+
     // ==================== AUDIO ====================
     let audioCtx = null;
 
@@ -203,7 +219,7 @@
         gain.connect(ctx.destination);
         osc.frequency.setValueAtTime(800, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.05);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.05);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.05);
@@ -226,7 +242,7 @@
         filter.frequency.setValueAtTime(2000, ctx.currentTime);
         filter.Q.setValueAtTime(2, ctx.currentTime);
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
         noise.connect(filter);
         filter.connect(gain);
@@ -244,7 +260,7 @@
         gain.connect(ctx.destination);
         osc.frequency.setValueAtTime(150, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(50, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + 0.15);
@@ -263,7 +279,7 @@
             gain.connect(ctx.destination);
             const startTime = ctx.currentTime + i * 0.02;
             osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.setValueAtTime(0.12, startTime);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
             osc.start(startTime);
             osc.stop(startTime + 0.4);
@@ -283,7 +299,7 @@
             gain.connect(ctx.destination);
             const startTime = ctx.currentTime + i * 0.08;
             osc.frequency.setValueAtTime(freq, startTime);
-            gain.gain.setValueAtTime(0.2, startTime);
+            gain.gain.setValueAtTime(0.15, startTime);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
             osc.start(startTime);
             osc.stop(startTime + 0.3);
@@ -312,8 +328,8 @@
                 gain.connect(ctx.destination);
                 const startTime = ctx.currentTime + chord.time;
                 osc.frequency.setValueAtTime(freq, startTime);
-                gain.gain.setValueAtTime(0.15, startTime);
-                gain.gain.setValueAtTime(0.15, startTime + 0.2);
+                gain.gain.setValueAtTime(0.12, startTime);
+                gain.gain.setValueAtTime(0.12, startTime + 0.2);
                 gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
                 osc.start(startTime);
                 osc.stop(startTime + 0.5);
@@ -325,7 +341,7 @@
         finalOsc.connect(finalGain);
         finalGain.connect(ctx.destination);
         finalOsc.frequency.setValueAtTime(1046.50, ctx.currentTime + 0.75);
-        finalGain.gain.setValueAtTime(0.2, ctx.currentTime + 0.75);
+        finalGain.gain.setValueAtTime(0.15, ctx.currentTime + 0.75);
         finalGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
         finalOsc.start(ctx.currentTime + 0.75);
         finalOsc.stop(ctx.currentTime + 1.5);
@@ -342,7 +358,7 @@
             gain.connect(ctx.destination);
             const startTime = ctx.currentTime + i * 0.3;
             osc.frequency.setValueAtTime(880, startTime);
-            gain.gain.setValueAtTime(0.2, startTime);
+            gain.gain.setValueAtTime(0.15, startTime);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.25);
             osc.start(startTime);
             osc.stop(startTime + 0.25);
@@ -352,7 +368,7 @@
     function playSwoosh() {
         const ctx = ensureAudio();
         if (!ctx) return;
-        const bufferSize = ctx.sampleRate * 0.2;
+        const bufferSize = ctx.sampleRate * 0.15;
         const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -363,17 +379,17 @@
         const filter = ctx.createBiquadFilter();
         filter.type = 'bandpass';
         filter.frequency.setValueAtTime(500, ctx.currentTime);
-        filter.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.1);
-        filter.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.2);
+        filter.frequency.exponentialRampToValueAtTime(2000, ctx.currentTime + 0.07);
+        filter.frequency.exponentialRampToValueAtTime(500, ctx.currentTime + 0.15);
         filter.Q.setValueAtTime(1, ctx.currentTime);
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.1, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
         noise.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
         noise.start(ctx.currentTime);
-        noise.stop(ctx.currentTime + 0.2);
+        noise.stop(ctx.currentTime + 0.15);
     }
 
     // ==================== BOARD ====================
@@ -391,14 +407,12 @@
     let dragStartPos = { x: 0, y: 0 };
     let lastDragPos = { x: 0, y: 0 };
     let totalDragDistance = 0;
-    let boardSize = 800;
-    let centerClickCallback = null;
-    const DRAG_THRESHOLD = 10; // Pixels of movement before considered a drag
+    let boardSize = 600;
+    const DRAG_THRESHOLD = 10;
 
-    function initBoard(canvas, onCenterClick) {
+    function initBoard(canvas) {
         boardCanvas = canvas;
         boardCtx = canvas.getContext('2d');
-        centerClickCallback = onCenterClick;
 
         resizeBoardCanvas();
         window.addEventListener('resize', resizeBoardCanvas);
@@ -414,9 +428,11 @@
     }
 
     function resizeBoardCanvas() {
-        boardCanvas.width = window.innerWidth;
-        boardCanvas.height = window.innerHeight;
-        boardSize = Math.min(boardCanvas.width, boardCanvas.height) * 1.5;
+        const wrapper = document.getElementById('board-wrapper');
+        const rect = wrapper.getBoundingClientRect();
+        boardCanvas.width = rect.width;
+        boardCanvas.height = rect.height;
+        boardSize = Math.min(rect.width, rect.height) * 1.4;
         renderBoard();
     }
 
@@ -443,7 +459,7 @@
         const dx = e.clientX - lastDragPos.x;
         const dy = e.clientY - lastDragPos.y;
         totalDragDistance += Math.sqrt(dx * dx + dy * dy);
-        const maxOffset = boardSize / 3;
+        const maxOffset = boardSize / 4;
         const newOffset = {
             x: clamp(st.boardOffset.x + dx, -maxOffset, maxOffset),
             y: clamp(st.boardOffset.y + dy, -maxOffset, maxOffset)
@@ -460,7 +476,7 @@
         const dx = e.touches[0].clientX - lastDragPos.x;
         const dy = e.touches[0].clientY - lastDragPos.y;
         totalDragDistance += Math.sqrt(dx * dx + dy * dy);
-        const maxOffset = boardSize / 3;
+        const maxOffset = boardSize / 4;
         const newOffset = {
             x: clamp(st.boardOffset.x + dx, -maxOffset, maxOffset),
             y: clamp(st.boardOffset.y + dy, -maxOffset, maxOffset)
@@ -471,44 +487,11 @@
     }
 
     function handleBoardDragEnd(e) {
-        if (!isDragging) return;
         isDragging = false;
-
-        // Only trigger click if we didn't drag significantly
-        if (totalDragDistance < DRAG_THRESHOLD && e) {
-            const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-            const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
-            if (clientX !== undefined && clientY !== undefined) {
-                handleBoardClick(clientX, clientY);
-            }
-        }
     }
 
     function handleBoardTouchEnd(e) {
-        if (!isDragging) return;
         isDragging = false;
-
-        // Only trigger click if we didn't drag significantly
-        if (totalDragDistance < DRAG_THRESHOLD && e.changedTouches && e.changedTouches.length > 0) {
-            const touch = e.changedTouches[0];
-            handleBoardClick(touch.clientX, touch.clientY);
-        }
-    }
-
-    function handleBoardClick(clientX, clientY) {
-        const st = getState();
-        const rect = boardCanvas.getBoundingClientRect();
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
-        const centerX = boardCanvas.width / 2 + st.boardOffset.x;
-        const centerY = boardCanvas.height / 2 + st.boardOffset.y;
-        const centerSize = boardSize * 0.45; // Larger click area
-        const dx = x - centerX;
-        const dy = y - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < centerSize && centerClickCallback) {
-            centerClickCallback();
-        }
     }
 
     function renderBoard() {
@@ -518,7 +501,7 @@
         const centerX = boardCanvas.width / 2 + st.boardOffset.x;
         const centerY = boardCanvas.height / 2 + st.boardOffset.y;
 
-        // Save context and rotate entire board 45 degrees
+        // Save and rotate entire board 45 degrees for isometric view
         boardCtx.save();
         boardCtx.translate(centerX, centerY);
         boardCtx.rotate(Math.PI / 4);
@@ -529,17 +512,20 @@
 
         boardCtx.restore();
 
-        // Draw center content (not rotated with board)
-        drawCenterDiamond(centerX, centerY, st);
+        // Draw center content
+        drawCenterArea(centerX, centerY, st);
     }
 
     function drawBoardBackground(cx, cy) {
-        boardCtx.fillStyle = '#F5DEB3';
-        drawRoundedRect(boardCtx, cx - boardSize / 2, cy - boardSize / 2, boardSize, boardSize, 20);
+        // Outer board
+        boardCtx.fillStyle = '#DEB887';
+        drawRoundedRect(boardCtx, cx - boardSize / 2, cy - boardSize / 2, boardSize, boardSize, 15);
         boardCtx.fill();
+
+        // Inner area
         boardCtx.fillStyle = '#C8E6C9';
-        const innerSize = boardSize * 0.75;
-        drawRoundedRect(boardCtx, cx - innerSize / 2, cy - innerSize / 2, innerSize, innerSize, 15);
+        const innerSize = boardSize * 0.76;
+        drawRoundedRect(boardCtx, cx - innerSize / 2, cy - innerSize / 2, innerSize, innerSize, 10);
         boardCtx.fill();
     }
 
@@ -550,6 +536,7 @@
         const propertiesPerSide = 9;
         const propertyWidth = (outerSize - 2 * cornerSize) / propertiesPerSide;
         const colors = ['#FF6B6B', '#FFA500', '#FFFF00', '#90EE90', '#00CED1', '#4169E1', '#9370DB', '#FF69B4'];
+
         for (let side = 0; side < 4; side++) {
             for (let i = 0; i < propertiesPerSide; i++) {
                 const color = colors[(side * 2 + Math.floor(i / 3)) % colors.length];
@@ -566,55 +553,51 @@
         const x = -bSize / 2 + cornerSize + index * propertyWidth;
         const y = -bSize / 2;
         ctx.fillStyle = '#FFFAF0';
-        ctx.fillRect(x, y, propertyWidth - 2, borderWidth - 2);
-        ctx.strokeStyle = '#333';
+        ctx.fillRect(x, y, propertyWidth - 1, borderWidth - 1);
+        ctx.strokeStyle = '#8B7355';
         ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, propertyWidth - 2, borderWidth - 2);
+        ctx.strokeRect(x, y, propertyWidth - 1, borderWidth - 1);
         ctx.fillStyle = color;
-        ctx.fillRect(x + 2, y + 2, propertyWidth - 6, borderWidth * 0.25);
+        ctx.fillRect(x + 1, y + 1, propertyWidth - 3, borderWidth * 0.28);
         ctx.restore();
     }
 
     function drawCorners(ctx, cx, cy, bSize, cornerSize) {
         const corners = [
-            { x: -bSize / 2, y: -bSize / 2, label: 'GO' },
-            { x: bSize / 2 - cornerSize, y: -bSize / 2, label: 'JAIL' },
-            { x: bSize / 2 - cornerSize, y: bSize / 2 - cornerSize, label: 'FREE' },
-            { x: -bSize / 2, y: bSize / 2 - cornerSize, label: 'GO TO' }
+            { x: -bSize / 2, y: -bSize / 2, label: 'GO', color: '#FF6B35' },
+            { x: bSize / 2 - cornerSize, y: -bSize / 2, label: 'JAIL', color: '#FFA500' },
+            { x: bSize / 2 - cornerSize, y: bSize / 2 - cornerSize, label: 'FREE', color: '#4CAF50' },
+            { x: -bSize / 2, y: bSize / 2 - cornerSize, label: '???', color: '#9C27B0' }
         ];
         for (let i = 0; i < corners.length; i++) {
             const corner = corners[i];
-            ctx.fillStyle = '#FFFAF0';
+            ctx.fillStyle = corner.color;
             ctx.fillRect(cx + corner.x, cy + corner.y, cornerSize, cornerSize);
-            ctx.strokeStyle = '#333';
+            ctx.strokeStyle = '#5D4037';
             ctx.lineWidth = 2;
             ctx.strokeRect(cx + corner.x, cy + corner.y, cornerSize, cornerSize);
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(corner.label, cx + corner.x + cornerSize / 2, cy + corner.y + cornerSize / 2);
         }
     }
 
-    function drawCenterDiamond(cx, cy, st) {
-        // Much larger center area - fills most of the inner board
-        const diamondSize = boardSize * 0.52;
-        const quadrantSize = diamondSize / 2;
+    function drawCenterArea(cx, cy, st) {
+        const centerSize = boardSize * 0.45;
 
         boardCtx.save();
         boardCtx.translate(cx, cy);
 
-        // Team quadrants positioned as per reference image:
-        // T1 = Top (cyan), T2 = Right (coral), T3 = Left (plum), T4 = Bottom (green)
+        // Team quadrants as triangular slices
         const quadrants = [
-            { team: 1, angle: -Math.PI/2, label: 'T1' },  // Top
-            { team: 2, angle: 0, label: 'T2' },           // Right
-            { team: 3, angle: Math.PI, label: 'T3' },     // Left
-            { team: 4, angle: Math.PI/2, label: 'T4' }    // Bottom
+            { team: 1, angle: -Math.PI / 2 },
+            { team: 2, angle: 0 },
+            { team: 3, angle: Math.PI },
+            { team: 4, angle: Math.PI / 2 }
         ];
 
-        // Draw each quadrant as a triangle slice
         for (let q = 0; q < quadrants.length; q++) {
             const quad = quadrants[q];
             const color = TEAM_COLORS[quad.team];
@@ -623,95 +606,57 @@
             boardCtx.save();
             boardCtx.rotate(quad.angle);
 
-            // Draw quadrant background (triangle pointing outward)
+            // Triangle slice
             boardCtx.beginPath();
             boardCtx.moveTo(0, 0);
-            boardCtx.lineTo(-quadrantSize * 0.7, -quadrantSize);
-            boardCtx.lineTo(quadrantSize * 0.7, -quadrantSize);
+            boardCtx.lineTo(-centerSize * 0.5, -centerSize * 0.7);
+            boardCtx.lineTo(centerSize * 0.5, -centerSize * 0.7);
             boardCtx.closePath();
-            boardCtx.fillStyle = hexToRgba(color, 0.7);
+            boardCtx.fillStyle = hexToRgba(color, 0.75);
             boardCtx.fill();
             boardCtx.strokeStyle = hexToRgba(color, 1);
-            boardCtx.lineWidth = 3;
-            boardCtx.stroke();
-
-            // Draw Garden area (upper portion of quadrant)
-            const gardenY = -quadrantSize * 0.85;
-            const gardenSize = quadrantSize * 0.35;
-            drawMiniGarden(boardCtx, 0, gardenY, gardenSize, garden);
-
-            // Garden label
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 10px Arial';
-            boardCtx.textAlign = 'center';
-            boardCtx.fillText('Garden', 0, gardenY + gardenSize/2 + 12);
-
-            // Draw Haystack area (middle portion)
-            const haystackY = -quadrantSize * 0.45;
-            boardCtx.fillStyle = '#D4A574';
-            drawRoundedRect(boardCtx, -20, haystackY - 15, 40, 30, 5);
-            boardCtx.fill();
-            boardCtx.strokeStyle = '#8B7355';
             boardCtx.lineWidth = 2;
             boardCtx.stroke();
-            boardCtx.font = '20px Arial';
-            boardCtx.fillText('🌾', 0, haystackY + 2);
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 8px Arial';
-            boardCtx.fillText('Haystack', 0, haystackY + 20);
 
-            // Team label near center
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 16px Arial';
+            // Mini garden
+            const gardenY = -centerSize * 0.55;
+            const gardenSize = centerSize * 0.28;
+            drawMiniGarden(boardCtx, 0, gardenY, gardenSize, garden);
+
+            // Haystack
+            boardCtx.fillStyle = '#D4A574';
+            drawRoundedRect(boardCtx, -15, -centerSize * 0.32, 30, 22, 4);
+            boardCtx.fill();
+            boardCtx.font = '14px Arial';
             boardCtx.textAlign = 'center';
+            boardCtx.fillText('🌾', 0, -centerSize * 0.22);
+
+            // Team label
+            boardCtx.fillStyle = '#fff';
+            boardCtx.font = 'bold 12px Arial';
             boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
-            boardCtx.shadowBlur = 3;
-            boardCtx.fillText(quad.label, 0, -quadrantSize * 0.2);
+            boardCtx.shadowBlur = 2;
+            boardCtx.fillText(TEAM_NAMES[quad.team], 0, -centerSize * 0.12);
             boardCtx.shadowBlur = 0;
 
             boardCtx.restore();
         }
 
-        // Draw center elements: Community Chest and Chance
-        // Community Chest (left of center)
+        // Center: Community Chest & Chance
         boardCtx.fillStyle = '#4169E1';
-        drawRoundedRect(boardCtx, -55, -20, 45, 40, 5);
+        drawRoundedRect(boardCtx, -35, -12, 30, 24, 4);
         boardCtx.fill();
-        boardCtx.strokeStyle = '#2E4A8E';
-        boardCtx.lineWidth = 2;
-        boardCtx.stroke();
         boardCtx.fillStyle = '#fff';
-        boardCtx.font = 'bold 7px Arial';
+        boardCtx.font = '12px Arial';
         boardCtx.textAlign = 'center';
-        boardCtx.fillText('COMMUNITY', -32, -5);
-        boardCtx.fillText('CHEST', -32, 5);
-        boardCtx.font = '14px Arial';
-        boardCtx.fillText('📦', -32, 18);
+        boardCtx.fillText('📦', -20, 4);
 
-        // Chance (right of center)
         boardCtx.fillStyle = '#FF8C00';
-        drawRoundedRect(boardCtx, 10, -20, 45, 40, 5);
+        drawRoundedRect(boardCtx, 5, -12, 30, 24, 4);
         boardCtx.fill();
-        boardCtx.strokeStyle = '#CC7000';
-        boardCtx.lineWidth = 2;
-        boardCtx.stroke();
-        boardCtx.fillStyle = '#fff';
-        boardCtx.font = 'bold 8px Arial';
-        boardCtx.fillText('CHANCE', 32, 0);
-        boardCtx.font = '14px Arial';
-        boardCtx.fillText('❓', 32, 15);
+        boardCtx.fillText('❓', 20, 4);
 
         boardCtx.restore();
-
-        // "Click to Enter" text
-        boardCtx.fillStyle = '#fff';
-        boardCtx.font = 'bold 14px Arial';
-        boardCtx.textAlign = 'center';
-        boardCtx.textBaseline = 'middle';
-        boardCtx.shadowColor = 'rgba(0,0,0,0.7)';
-        boardCtx.shadowBlur = 4;
-        boardCtx.fillText('Click to Enter Garden', cx, cy + diamondSize * 0.55);
-        boardCtx.shadowBlur = 0;
     }
 
     function drawMiniGarden(ctx, x, y, size, garden) {
@@ -720,9 +665,8 @@
         const startY = y - size / 2;
         const stageColors = ['#5D4037', '#6D4C41', '#7CB342', '#8BC34A', '#9CCC65'];
 
-        // Background
         ctx.fillStyle = '#3E2723';
-        drawRoundedRect(ctx, startX - 2, startY - 2, size + 4, size + 4, 4);
+        drawRoundedRect(ctx, startX - 1, startY - 1, size + 2, size + 2, 3);
         ctx.fill();
 
         for (let row = 0; row < 4; row++) {
@@ -751,14 +695,12 @@
     }
 
     function resizeGardenCanvas() {
-        const container = gardenCanvas.parentElement;
-        const rect = container.getBoundingClientRect();
-        // Make garden much smaller - fit better on screen
-        const maxSize = Math.min(rect.width - 40, 350);
+        const wrapper = document.getElementById('garden-wrapper');
+        if (!wrapper) return;
+        const rect = wrapper.getBoundingClientRect();
+        const maxSize = Math.min(rect.width - 20, rect.height - 20, 320);
         gardenCanvas.width = maxSize;
         gardenCanvas.height = maxSize;
-        gardenCanvas.style.maxWidth = maxSize + 'px';
-        gardenCanvas.style.maxHeight = maxSize + 'px';
         renderGarden();
     }
 
@@ -766,12 +708,15 @@
         const st = getState();
         const garden = st.gardens[st.selectedTeam];
         gardenCtx.clearRect(0, 0, gardenCanvas.width, gardenCanvas.height);
-        const padding = 15;
+
+        const padding = 12;
         const gridSize = gardenCanvas.width - padding * 2;
         const plotSize = gridSize / 4;
+
         gardenCtx.fillStyle = '#3E2723';
         drawRoundedRect(gardenCtx, padding / 2, padding / 2, gridSize + padding, gridSize + padding, 10);
         gardenCtx.fill();
+
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 4; col++) {
                 const plotIndex = row * 4 + col;
@@ -785,11 +730,12 @@
     }
 
     function drawPlot(x, y, size, plot, index) {
-        const gap = 3;
+        const gap = 2;
         const plotX = x + gap;
         const plotY = y + gap;
         const plotWidth = size - gap * 2;
-        const plotHeight = size - gap * 2 - 12;
+        const plotHeight = size - gap * 2 - 10;
+
         const anim = plotAnimations[index];
         let scale = 1;
         let glow = 0;
@@ -799,58 +745,63 @@
                 delete plotAnimations[index];
             } else {
                 scale = 1 + Math.sin(progress * Math.PI) * 0.1;
-                glow = Math.sin(progress * Math.PI) * 20;
+                glow = Math.sin(progress * Math.PI) * 15;
             }
         }
+
         gardenCtx.save();
         const centerX = plotX + plotWidth / 2;
         const centerY = plotY + plotHeight / 2;
         gardenCtx.translate(centerX, centerY);
         gardenCtx.scale(scale, scale);
         gardenCtx.translate(-centerX, -centerY);
+
         if (glow > 0) {
             gardenCtx.shadowColor = '#FFD700';
             gardenCtx.shadowBlur = glow;
         }
+
         gardenCtx.fillStyle = PLOT_COLORS[plot.stage];
-        drawRoundedRect(gardenCtx, plotX, plotY, plotWidth, plotHeight, 6);
+        drawRoundedRect(gardenCtx, plotX, plotY, plotWidth, plotHeight, 5);
         gardenCtx.fill();
         gardenCtx.strokeStyle = '#2E1B0F';
-        gardenCtx.lineWidth = 2;
+        gardenCtx.lineWidth = 1;
         gardenCtx.stroke();
         gardenCtx.shadowBlur = 0;
+
         if (plot.stage > 0) {
-            gardenCtx.font = (plotWidth * 0.45) + 'px Arial';
+            gardenCtx.font = (plotWidth * 0.4) + 'px Arial';
             gardenCtx.textAlign = 'center';
             gardenCtx.textBaseline = 'middle';
             gardenCtx.fillText(PLANT_EMOJIS[plot.stage], centerX, centerY);
         }
+
         const row = Math.floor(index / 4) + 1;
         const col = (index % 4) + 1;
         gardenCtx.fillStyle = 'rgba(255,255,255,0.4)';
-        gardenCtx.font = 'bold 9px Arial';
+        gardenCtx.font = 'bold 8px Arial';
         gardenCtx.textAlign = 'left';
         gardenCtx.textBaseline = 'top';
-        gardenCtx.fillText(row + ',' + col, plotX + 3, plotY + 2);
+        gardenCtx.fillText(row + ',' + col, plotX + 2, plotY + 1);
+
         gardenCtx.restore();
+
+        // XP Bar
         const barX = plotX;
-        const barY = plotY + plotHeight + 2;
+        const barY = plotY + plotHeight + 1;
         const barWidth = plotWidth;
-        const barHeight = 6;
+        const barHeight = 5;
+
         gardenCtx.fillStyle = '#1a1a1a';
-        drawRoundedRect(gardenCtx, barX, barY, barWidth, barHeight, 3);
+        drawRoundedRect(gardenCtx, barX, barY, barWidth, barHeight, 2);
         gardenCtx.fill();
+
         const fillWidth = (plot.xp / 100) * barWidth;
         if (fillWidth > 0) {
             gardenCtx.fillStyle = getXPBarColor(plot.xp);
-            drawRoundedRect(gardenCtx, barX, barY, Math.max(fillWidth, 6), barHeight, 3);
+            drawRoundedRect(gardenCtx, barX, barY, Math.max(fillWidth, 4), barHeight, 2);
             gardenCtx.fill();
         }
-        gardenCtx.fillStyle = '#fff';
-        gardenCtx.font = 'bold 6px Arial';
-        gardenCtx.textAlign = 'center';
-        gardenCtx.textBaseline = 'middle';
-        gardenCtx.fillText(plot.xp + '', barX + barWidth / 2, barY + barHeight / 2);
     }
 
     function getXPBarColor(xp) {
@@ -862,19 +813,19 @@
     }
 
     function drawGridLabels(padding, plotSize) {
-        gardenCtx.fillStyle = 'rgba(255,255,255,0.6)';
-        gardenCtx.font = 'bold 12px Arial';
+        gardenCtx.fillStyle = 'rgba(255,255,255,0.5)';
+        gardenCtx.font = 'bold 10px Arial';
         gardenCtx.textAlign = 'right';
         gardenCtx.textBaseline = 'middle';
         for (let i = 0; i < 4; i++) {
             const y = padding + i * plotSize + plotSize / 2;
-            gardenCtx.fillText((i + 1).toString(), padding - 5, y);
+            gardenCtx.fillText((i + 1).toString(), padding - 3, y);
         }
         gardenCtx.textAlign = 'center';
         gardenCtx.textBaseline = 'bottom';
         for (let i = 0; i < 4; i++) {
             const x = padding + i * plotSize + plotSize / 2;
-            gardenCtx.fillText((i + 1).toString(), x, padding - 3);
+            gardenCtx.fillText((i + 1).toString(), x, padding - 2);
         }
     }
 
@@ -921,38 +872,40 @@
     function updateDiceButton() {
         const st = getState();
         rollBtn.disabled = st.seeds < 1 || isRolling;
-        if (st.seeds < 1) {
-            rollBtn.textContent = 'No Seeds!';
-        } else {
-            rollBtn.textContent = 'Roll Dice (1 Seed)';
-        }
     }
 
     function handleRoll() {
         const st = getState();
         if (st.seeds < 1 || isRolling) return;
         if (!consumeSeeds(1)) return;
+
         isRolling = true;
         updateDiceButton();
         resultElement.textContent = 'Rolling...';
+
         playDiceRoll();
         die1Element.classList.add('rolling');
         die2Element.classList.add('rolling');
+
         const animateInterval = setInterval(function() {
             die1Element.textContent = DIE_FACES[randomInt(0, 4)];
             die2Element.textContent = DIE_FACES[randomInt(0, 4)];
         }, 50);
+
         setTimeout(function() {
             clearInterval(animateInterval);
             const roll1 = DIE_FACES[randomInt(0, 4)];
             const roll2 = DIE_FACES[randomInt(0, 4)];
+
             die1Element.textContent = roll1;
             die2Element.textContent = roll2;
             die1Element.classList.remove('rolling');
             die2Element.classList.remove('rolling');
             die1Element.classList.toggle('double', roll1 === '2x');
             die2Element.classList.toggle('double', roll2 === '2x');
+
             playDiceLand();
+
             setTimeout(function() {
                 const result = processRoll(roll1, roll2);
                 isRolling = false;
@@ -967,9 +920,10 @@
         const team = st.selectedTeam;
         const XP_GAIN = 15;
         let result = { die1: roll1, die2: roll2, type: '', affectedPlots: [], message: '' };
+
         if (roll1 === '2x' && roll2 === '2x') {
             result.type = 'fullBoard';
-            result.message = 'JACKPOT! XP to ALL plots!';
+            result.message = 'JACKPOT! All plots +XP!';
             result.affectedPlots = [];
             for (let i = 0; i < 16; i++) result.affectedPlots.push(i);
             addXPToAllPlots(team, XP_GAIN);
@@ -977,7 +931,7 @@
         } else if (roll1 === '2x') {
             const col = roll2 - 1;
             result.type = 'column';
-            result.message = 'Column ' + roll2 + ' planted!';
+            result.message = 'Column ' + roll2 + '!';
             result.affectedPlots = [col, col + 4, col + 8, col + 12];
             for (let i = 0; i < result.affectedPlots.length; i++) {
                 updateGardenPlot(team, result.affectedPlots[i], XP_GAIN);
@@ -986,7 +940,7 @@
         } else if (roll2 === '2x') {
             const row = roll1 - 1;
             result.type = 'row';
-            result.message = 'Row ' + roll1 + ' planted!';
+            result.message = 'Row ' + roll1 + '!';
             result.affectedPlots = [row * 4, row * 4 + 1, row * 4 + 2, row * 4 + 3];
             for (let i = 0; i < result.affectedPlots.length; i++) {
                 updateGardenPlot(team, result.affectedPlots[i], XP_GAIN);
@@ -997,11 +951,12 @@
             const col = roll2 - 1;
             const plotIndex = row * 4 + col;
             result.type = 'single';
-            result.message = 'Planted at (' + roll1 + ', ' + roll2 + ')!';
+            result.message = '(' + roll1 + ',' + roll2 + ')';
             result.affectedPlots = [plotIndex];
             updateGardenPlot(team, plotIndex, XP_GAIN);
             playPlotHit();
         }
+
         resultElement.textContent = result.message;
         return result;
     }
@@ -1019,63 +974,58 @@
         renderGarden();
     }
 
-    // ==================== HUD ====================
-    let hudElement, badgeElement, seedCountElement, timerElement, haystackSeedElement;
-    let timerInterval = null;
-    let onBadgeClickCallback = null;
+    // ==================== UI UPDATE ====================
+    function updateAllUI(st) {
+        // Top bar seeds
+        const topSeeds = document.getElementById('top-seeds');
+        if (topSeeds) topSeeds.textContent = st.seeds;
 
-    function initHUD(hudEl, onBadgeClick) {
-        hudElement = hudEl;
-        badgeElement = document.getElementById('hud-badge');
-        seedCountElement = document.getElementById('hud-seed-count');
-        timerElement = document.getElementById('hud-timer');
-        haystackSeedElement = document.getElementById('seed-count');
-        onBadgeClickCallback = onBadgeClick;
-        badgeElement.addEventListener('click', function() {
-            if (onBadgeClickCallback) onBadgeClickCallback();
-        });
-        subscribeState(updateHUD);
-        startTimerLoop();
-        updateHUD(getState());
-    }
+        // Top coins
+        const topCoins = document.getElementById('top-coins');
+        if (topCoins) topCoins.textContent = st.coins;
 
-    function startTimerLoop() {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(updateTimer, 1000);
+        // Rolls count in nav
+        const rollsCount = document.getElementById('rolls-count');
+        if (rollsCount) rollsCount.textContent = st.seeds;
+
+        // Garden seeds
+        const gardenSeeds = document.getElementById('garden-seeds');
+        if (gardenSeeds) gardenSeeds.textContent = st.seeds;
+
+        // Haystack count
+        const haystackCount = document.getElementById('haystack-count');
+        if (haystackCount) haystackCount.textContent = st.seeds;
+
+        // Event progress
+        const totalProgress = getTotalProgress();
+        const maxProgress = 6400; // 4 teams * 16 plots * 100 xp
+        const progressPercent = Math.min(100, (totalProgress / maxProgress) * 100);
+
+        const progressFill = document.getElementById('event-progress-fill');
+        if (progressFill) progressFill.style.width = progressPercent + '%';
+
+        const progressText = document.getElementById('event-progress-text');
+        if (progressText) progressText.textContent = Math.floor(progressPercent) + '/100';
+
+        // Timer
+        updateTimer();
+
+        // Dice button
+        updateDiceButton();
     }
 
     function updateTimer() {
         const remaining = getTimerRemaining();
-        timerElement.textContent = formatTime(remaining);
+        const timeStr = formatTime(remaining);
+
+        const bannerTimer = document.getElementById('banner-timer');
+        if (bannerTimer) bannerTimer.textContent = timeStr;
+
         const bonusSeeds = checkTimerExpired();
         if (bonusSeeds > 0) {
             playTimerComplete();
             showBonusNotification(bonusSeeds);
         }
-        const hours = remaining / (1000 * 60 * 60);
-        if (hours < 1) {
-            timerElement.style.color = '#e74c3c';
-        } else if (hours < 3) {
-            timerElement.style.color = '#f39c12';
-        } else {
-            timerElement.style.color = '#3498db';
-        }
-    }
-
-    function updateHUD(st) {
-        if (seedCountElement) seedCountElement.textContent = st.seeds;
-        if (haystackSeedElement) haystackSeedElement.textContent = st.seeds;
-        updateTimer();
-    }
-
-    function showHUD() {
-        hudElement.classList.remove('hud-hidden');
-        hudElement.classList.add('hud-visible');
-    }
-
-    function hideHUD() {
-        hudElement.classList.remove('hud-visible');
-        hudElement.classList.add('hud-hidden');
     }
 
     function showBonusNotification(seeds) {
@@ -1090,7 +1040,7 @@
         }, 2000);
     }
 
-    // ==================== MAIN ====================
+    // ==================== NAVIGATION ====================
     function navigateToGarden() {
         playClick();
         playSwoosh();
@@ -1108,24 +1058,27 @@
     function showBoardView() {
         document.getElementById('board-view').classList.add('active');
         document.getElementById('garden-view').classList.remove('active');
-        showHUD();
+        resizeBoardCanvas();
         renderBoard();
     }
 
     function showGardenView() {
         document.getElementById('board-view').classList.remove('active');
         document.getElementById('garden-view').classList.add('active');
-        hideHUD();
         resizeGardenCanvas();
         renderGarden();
-        updateDiceButton();
     }
 
+    // ==================== INIT ====================
     function init() {
         initState();
+
+        // Enable audio on first interaction
         document.addEventListener('click', function() { initAudio(); }, { once: true });
         document.addEventListener('touchstart', function() { initAudio(); }, { once: true });
-        initBoard(document.getElementById('board-canvas'), navigateToGarden);
+
+        // Init components
+        initBoard(document.getElementById('board-canvas'));
         initGarden(document.getElementById('garden-canvas'));
         initDice(
             document.getElementById('die1'),
@@ -1133,22 +1086,36 @@
             document.getElementById('roll-btn'),
             document.getElementById('roll-result')
         );
-        initHUD(document.getElementById('hud'), navigateToGarden);
+
+        // Navigation handlers
+        document.getElementById('go-button').addEventListener('click', navigateToGarden);
+        document.getElementById('garden-badge').addEventListener('click', navigateToGarden);
         document.getElementById('back-btn').addEventListener('click', navigateToBoard);
+
+        // State updates
         subscribeState(function(st) {
+            updateAllUI(st);
             if (st.currentView === 'board') {
                 renderBoard();
             } else {
                 renderGarden();
             }
-            updateDiceButton();
         });
+
+        // Timer interval
+        setInterval(updateTimer, 1000);
+
+        // Initial UI update
+        updateAllUI(getState());
+
+        // Show correct view
         const st = getState();
         if (st.currentView === 'garden') {
             showGardenView();
         } else {
             showBoardView();
         }
+
         console.log('Harvest Festival initialized!');
     }
 

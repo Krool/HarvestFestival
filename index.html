@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Harvest Festival</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -10,37 +10,125 @@
     <div id="game-container">
         <!-- Main Board View -->
         <div id="board-view" class="view active">
-            <canvas id="board-canvas"></canvas>
+            <!-- Top Resource Bar -->
+            <div id="top-bar">
+                <div class="resource-item seeds">
+                    <span class="resource-icon">🌱</span>
+                    <span id="top-seeds">50</span>
+                </div>
+                <div class="resource-item coins">
+                    <span class="resource-icon">🪙</span>
+                    <span id="top-coins">0</span>
+                </div>
+                <div class="spacer"></div>
+                <button id="menu-btn" class="icon-btn">☰</button>
+            </div>
+
+            <!-- Event Banner -->
+            <div id="event-banner">
+                <div class="event-title">HARVEST FESTIVAL</div>
+                <div class="event-progress">
+                    <div class="progress-bar">
+                        <div id="event-progress-fill" class="progress-fill"></div>
+                    </div>
+                    <span id="event-progress-text">0/100</span>
+                </div>
+                <div class="event-timer">
+                    <span id="banner-timer">12:00:00</span>
+                </div>
+            </div>
+
+            <!-- Left Side Badges -->
+            <div id="left-badges">
+                <div class="side-badge garden-badge" id="garden-badge">
+                    <span class="badge-icon">🌻</span>
+                    <span class="badge-label">Garden</span>
+                </div>
+            </div>
+
+            <!-- Board Canvas -->
+            <div id="board-wrapper">
+                <canvas id="board-canvas"></canvas>
+            </div>
+
+            <!-- Bottom Action Area -->
+            <div id="bottom-area">
+                <div id="go-button">
+                    <div class="go-inner">
+                        <span class="go-text">GO</span>
+                        <span class="go-sub">TAP TO GARDEN</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Nav -->
+            <div id="bottom-nav">
+                <div class="nav-item">
+                    <span class="nav-icon">🏆</span>
+                    <span class="nav-label">WINS</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">🏗️</span>
+                    <span class="nav-label">BUILD</span>
+                </div>
+                <div class="nav-item nav-center">
+                    <div class="rolls-display">
+                        <span id="rolls-count">50</span>
+                        <span class="rolls-label">SEEDS</span>
+                    </div>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">📖</span>
+                    <span class="nav-label">ALBUM</span>
+                </div>
+                <div class="nav-item">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-label">FRIENDS</span>
+                </div>
+            </div>
         </div>
 
         <!-- Garden View -->
         <div id="garden-view" class="view">
-            <div id="garden-header">
-                <button id="back-btn" class="btn">← Back</button>
-                <div id="haystack-display">
-                    <span class="haystack-icon">🌾</span>
-                    <span id="seed-count">50</span> Seeds
+            <!-- Garden Top Bar -->
+            <div id="garden-top-bar">
+                <button id="back-btn" class="icon-btn">←</button>
+                <div class="garden-title">YOUR GARDEN</div>
+                <div class="resource-item seeds">
+                    <span class="resource-icon">🌱</span>
+                    <span id="garden-seeds">50</span>
                 </div>
             </div>
-            <canvas id="garden-canvas"></canvas>
+
+            <!-- Haystack Display -->
+            <div id="haystack-area">
+                <div class="haystack-icon">🌾</div>
+                <div class="haystack-info">
+                    <div class="haystack-title">Haystack</div>
+                    <div class="haystack-seeds"><span id="haystack-count">50</span> Seeds</div>
+                </div>
+            </div>
+
+            <!-- Garden Canvas -->
+            <div id="garden-wrapper">
+                <canvas id="garden-canvas"></canvas>
+            </div>
+
+            <!-- Dice Area -->
             <div id="dice-area">
                 <div id="dice-container">
                     <div id="die1" class="die">1</div>
                     <div id="die2" class="die">1</div>
                 </div>
-                <button id="roll-btn" class="btn btn-primary">Roll Dice (1 Seed)</button>
                 <div id="roll-result"></div>
             </div>
-        </div>
 
-        <!-- HUD Overlay -->
-        <div id="hud" class="hud-visible">
-            <div id="hud-badge">
-                <div id="hud-seeds">
-                    <span class="seed-icon">🌱</span>
-                    <span id="hud-seed-count">50</span>
-                </div>
-                <div id="hud-timer">12:00:00</div>
+            <!-- Roll Button -->
+            <div id="roll-button-area">
+                <button id="roll-btn" class="roll-button">
+                    <span class="roll-text">ROLL</span>
+                    <span class="roll-cost">-1 🌱</span>
+                </button>
             </div>
         </div>
     </div>
