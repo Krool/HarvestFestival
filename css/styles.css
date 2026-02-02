@@ -282,6 +282,39 @@ body {
     animation: none;
 }
 
+/* GO Multiplier Button */
+.go-multiplier-btn {
+    background: linear-gradient(135deg, #7B1FA2, #9C27B0);
+    border: 2px solid #CE93D8;
+    border-radius: 15px;
+    padding: 8px 14px;
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+
+.go-multiplier-btn:active {
+    transform: scale(0.95);
+}
+
+.go-multiplier-btn.x3 {
+    background: linear-gradient(135deg, #1976D2, #2196F3);
+    border-color: #90CAF9;
+}
+
+.go-multiplier-btn.x5 {
+    background: linear-gradient(135deg, #F57C00, #FF9800);
+    border-color: #FFCC80;
+}
+
+.go-multiplier-btn.x10 {
+    background: linear-gradient(135deg, #C62828, #E53935);
+    border-color: #EF9A9A;
+}
+
 .go-inner {
     transform: rotate(-45deg);
     text-align: center;
@@ -404,11 +437,40 @@ body {
     border-radius: 10px;
 }
 
-#garden-harvest-counter {
-    color: #5D4037;
-    font-size: 12px;
+/* Team Progress Bar */
+#team-progress-container {
+    margin: 0 12px 8px;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+}
+
+#team-progress-bar {
+    height: 16px;
+    background: #3E2723;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    margin-bottom: 6px;
+}
+
+.team-legend {
+    display: flex;
+    justify-content: space-around;
+    font-size: 10px;
     font-weight: bold;
 }
+
+.legend-item {
+    padding: 2px 8px;
+    border-radius: 8px;
+    color: white;
+}
+
+.legend-item.t1 { background: #00CED1; }
+.legend-item.t2 { background: #FF6B6B; }
+.legend-item.t3 { background: #DDA0DD; }
+.legend-item.t4 { background: #90EE90; color: #333; }
 
 /* Garden Wrapper */
 #garden-wrapper {

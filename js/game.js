@@ -67,9 +67,8 @@
                 4: createGarden()
             },
             boardOffset: { x: 0, y: 0 },
-            haystackPoints: 0,
-            harvestCount: 0,
-            maxHarvests: 8,
+            haystackPoints: { 1: 0, 2: 0, 3: 0, 4: 0 },
+            goMultiplier: 1,
             otherTeamProgress: { 2: 0, 3: 0, 4: 0 }
         };
     }
@@ -92,9 +91,11 @@
                 if (!state.wins) state.wins = 0;
                 if (state.needsHarvest === undefined) state.needsHarvest = false;
                 if (!state.multiplier) state.multiplier = 1;
-                if (state.haystackPoints === undefined) state.haystackPoints = 0;
-                if (state.harvestCount === undefined) state.harvestCount = 0;
-                if (state.maxHarvests === undefined) state.maxHarvests = 8;
+                if (!state.goMultiplier) state.goMultiplier = 1;
+                // Convert old haystack format to new
+                if (typeof state.haystackPoints === 'number' || state.haystackPoints === undefined) {
+                    state.haystackPoints = { 1: state.haystackPoints || 0, 2: 0, 3: 0, 4: 0 };
+                }
                 if (!state.otherTeamProgress) state.otherTeamProgress = { 2: 0, 3: 0, 4: 0 };
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
@@ -127,15 +128,17 @@
         return state;
     }
 
-    const MAX_PLOT_XP = 1000;
+    // New progression: doubles seeds needed but first plants are 1/4
+    // Stage thresholds: 0, 50, 150, 400, 1000, then 2000+ with diminishing returns
+    const STAGE_THRESHOLDS = [0, 50, 150, 400, 1000];
+    const MAX_VISUAL_STAGE = 4; // Visual caps at stage 4 (sunflower)
 
     function updateGardenPlot(team, plotIndex, xpGain) {
         const garden = state.gardens[team];
         const plot = garden.plots[plotIndex];
-        const actualGain = Math.min(MAX_PLOT_XP - plot.xp, xpGain);
-        plot.xp = Math.min(MAX_PLOT_XP, plot.xp + xpGain);
+        plot.xp += xpGain;
         plot.stage = getStageFromXP(plot.xp);
-        state.totalXP += actualGain;
+        state.totalXP += xpGain;
         saveState();
         notifyStateListeners();
         return plot;
@@ -145,10 +148,9 @@
         const garden = state.gardens[team];
         for (let i = 0; i < garden.plots.length; i++) {
             const plot = garden.plots[i];
-            const actualGain = Math.min(MAX_PLOT_XP - plot.xp, xpGain);
-            plot.xp = Math.min(MAX_PLOT_XP, plot.xp + xpGain);
+            plot.xp += xpGain;
             plot.stage = getStageFromXP(plot.xp);
-            state.totalXP += actualGain;
+            state.totalXP += xpGain;
         }
         saveState();
         notifyStateListeners();
@@ -165,19 +167,31 @@
     }
 
     function getStageFromXP(xp) {
-        if (xp >= 1000) return 4;
-        if (xp >= 750) return 3;
-        if (xp >= 500) return 2;
-        if (xp >= 250) return 1;
+        // New curve: 0, 50, 150, 400, 1000 (then continues with diminishing visual)
+        if (xp >= 1000) return 4; // Visual caps at 4
+        if (xp >= 400) return 3;
+        if (xp >= 150) return 2;
+        if (xp >= 50) return 1;
         return 0;
     }
 
+    function getVisualStage(xp) {
+        // Visual stage caps at 4 even if XP continues
+        return Math.min(MAX_VISUAL_STAGE, getStageFromXP(xp));
+    }
+
     function getXPForNextStage(xp) {
-        if (xp >= 1000) return { current: 1000, next: 1000, progress: 100 };
-        if (xp >= 750) return { current: xp - 750, next: 250, progress: (xp - 750) / 250 * 100 };
-        if (xp >= 500) return { current: xp - 500, next: 250, progress: (xp - 500) / 250 * 100 };
-        if (xp >= 250) return { current: xp - 250, next: 250, progress: (xp - 250) / 250 * 100 };
-        return { current: xp, next: 250, progress: xp / 250 * 100 };
+        // Progress bar shows progress to next stage
+        if (xp >= 1000) {
+            // Past stage 4 - show diminishing returns progress (every 2000 XP)
+            const extraXP = xp - 1000;
+            const progress = (extraXP % 2000) / 2000 * 100;
+            return { current: extraXP % 2000, next: 2000, progress: progress, stage: 4 };
+        }
+        if (xp >= 400) return { current: xp - 400, next: 600, progress: (xp - 400) / 600 * 100, stage: 3 };
+        if (xp >= 150) return { current: xp - 150, next: 250, progress: (xp - 150) / 250 * 100, stage: 2 };
+        if (xp >= 50) return { current: xp - 50, next: 100, progress: (xp - 50) / 100 * 100, stage: 1 };
+        return { current: xp, next: 50, progress: xp / 50 * 100, stage: 0 };
     }
 
     function cycleMultiplier() {
@@ -834,17 +848,18 @@
             for (let col = 0; col < 4; col++) {
                 const plotIndex = row * 4 + col;
                 const plot = garden.plots[plotIndex];
+                const visualStage = getVisualStage(plot.xp);
                 const px = startX + col * plotSize;
                 const py = startY + row * plotSize;
-                ctx.fillStyle = stageColors[plot.stage];
+                ctx.fillStyle = stageColors[visualStage];
                 ctx.fillRect(px + 0.5, py + 0.5, plotSize - 1, plotSize - 1);
 
                 // Draw plant emoji if stage > 0
-                if (plot.stage > 0) {
+                if (visualStage > 0) {
                     ctx.font = (plotSize * 0.7) + 'px Arial';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(plantEmojis[plot.stage], px + plotSize / 2, py + plotSize / 2);
+                    ctx.fillText(plantEmojis[visualStage], px + plotSize / 2, py + plotSize / 2);
                 }
             }
         }
@@ -931,7 +946,8 @@
             gardenCtx.shadowBlur = glow;
         }
 
-        gardenCtx.fillStyle = PLOT_COLORS[plot.stage];
+        const visualStage = getVisualStage(plot.xp);
+        gardenCtx.fillStyle = PLOT_COLORS[visualStage];
         drawRoundedRect(gardenCtx, plotX, plotY, plotWidth, plotHeight, 5);
         gardenCtx.fill();
         gardenCtx.strokeStyle = '#2E1B0F';
@@ -939,11 +955,11 @@
         gardenCtx.stroke();
         gardenCtx.shadowBlur = 0;
 
-        if (plot.stage > 0) {
+        if (visualStage > 0) {
             gardenCtx.font = (plotWidth * 0.4) + 'px Arial';
             gardenCtx.textAlign = 'center';
             gardenCtx.textBaseline = 'middle';
-            gardenCtx.fillText(PLANT_EMOJIS[plot.stage], centerX, centerY);
+            gardenCtx.fillText(PLANT_EMOJIS[visualStage], centerX, centerY);
         }
 
         const row = Math.floor(index / 4) + 1;
@@ -973,13 +989,21 @@
             drawRoundedRect(gardenCtx, barX, barY, Math.max(fillWidth, 4), barHeight, 2);
             gardenCtx.fill();
         }
+
+        // Show XP beyond stage 4 with a star indicator
+        if (plot.xp >= 1000) {
+            gardenCtx.fillStyle = '#FFD700';
+            gardenCtx.font = 'bold 8px Arial';
+            gardenCtx.textAlign = 'right';
+            gardenCtx.fillText('★', plotX + plotWidth - 2, plotY + 8);
+        }
     }
 
     function getXPBarColor(xp) {
         if (xp >= 1000) return '#FFD700';
-        if (xp >= 750) return '#FFA500';
-        if (xp >= 500) return '#90EE90';
-        if (xp >= 250) return '#4CAF50';
+        if (xp >= 400) return '#FFA500';
+        if (xp >= 150) return '#90EE90';
+        if (xp >= 50) return '#4CAF50';
         return '#2E7D32';
     }
 
@@ -1380,16 +1404,11 @@
                 clearGarden(st.selectedTeam);
                 setNeedsHarvest(false);
 
-                // Add points to haystack
-                st.haystackPoints = (st.haystackPoints || 0) + totalPoints;
-                st.harvestCount = (st.harvestCount || 0) + 1;
-
-                // Check if event is complete
-                if (st.harvestCount >= st.maxHarvests) {
-                    // Event complete - could trigger special reward
-                    st.harvestCount = 0;
-                    st.haystackPoints = 0;
+                // Add points to player's haystack (team 1)
+                if (!st.haystackPoints || typeof st.haystackPoints === 'number') {
+                    st.haystackPoints = { 1: 0, 2: 0, 3: 0, 4: 0 };
                 }
+                st.haystackPoints[1] = (st.haystackPoints[1] || 0) + totalPoints;
 
                 saveState();
                 addWin();
@@ -1441,21 +1460,117 @@
 
     function updateHaystackDisplay() {
         const st = getState();
+        const haystackArea = document.getElementById('haystack-area');
+        if (!haystackArea) return;
+
+        // Get all team points
+        const points = st.haystackPoints || { 1: 0, 2: 0, 3: 0, 4: 0 };
+        const totalPoints = points[1] + points[2] + points[3] + points[4];
+
+        // Calculate rankings for crowns
+        const rankings = getTeamRankings(points);
+
+        // Update haystack count with player's points
         const haystackCount = document.getElementById('haystack-count');
         if (haystackCount) {
-            haystackCount.textContent = st.haystackPoints || 0;
+            const crown = rankings[1];
+            const crownEmoji = crown === 1 ? '👑' : crown === 2 ? '🥈' : crown === 3 ? '🥉' : '';
+            haystackCount.textContent = (points[1] || 0) + (crownEmoji ? ' ' + crownEmoji : '');
+        }
+
+        // Update the team progress bar
+        updateTeamProgressBar(points, totalPoints);
+    }
+
+    function getTeamRankings(points) {
+        // Returns object with team -> rank (1=gold, 2=silver, 3=bronze, 0=no crown)
+        const teams = [
+            { team: 1, pts: points[1] || 0 },
+            { team: 2, pts: points[2] || 0 },
+            { team: 3, pts: points[3] || 0 },
+            { team: 4, pts: points[4] || 0 }
+        ];
+
+        // Check if all tied at 0
+        const allZero = teams.every(t => t.pts === 0);
+        if (allZero) return { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+        // Sort by points descending
+        teams.sort((a, b) => b.pts - a.pts);
+
+        const rankings = {};
+        let currentRank = 1;
+        let lastPts = -1;
+        let sameRankCount = 0;
+
+        for (let i = 0; i < teams.length; i++) {
+            if (teams[i].pts === lastPts) {
+                // Same as previous, give same rank
+                rankings[teams[i].team] = rankings[teams[i - 1].team];
+                sameRankCount++;
+            } else {
+                currentRank = i + 1;
+                rankings[teams[i].team] = currentRank <= 3 ? currentRank : 0;
+                sameRankCount = 0;
+            }
+            lastPts = teams[i].pts;
+        }
+
+        return rankings;
+    }
+
+    function updateTeamProgressBar(points, total) {
+        const barContainer = document.getElementById('team-progress-bar');
+        if (!barContainer) return;
+
+        // Clear existing
+        barContainer.innerHTML = '';
+
+        if (total === 0) {
+            // Empty state
+            barContainer.innerHTML = '<div style="width:100%;height:100%;background:#3E2723;border-radius:4px;"></div>';
+            return;
+        }
+
+        // Create segments for each team
+        const colors = { 1: '#00CED1', 2: '#FF6B6B', 3: '#DDA0DD', 4: '#90EE90' };
+        const teams = [1, 2, 3, 4];
+
+        for (let i = 0; i < teams.length; i++) {
+            const team = teams[i];
+            const pct = (points[team] / total) * 100;
+            if (pct > 0) {
+                const segment = document.createElement('div');
+                segment.style.cssText = 'height:100%;display:inline-block;';
+                segment.style.width = pct + '%';
+                segment.style.background = colors[team];
+                if (i === 0) segment.style.borderRadius = '4px 0 0 4px';
+                if (i === 3 || (i < 3 && points[teams[i + 1]] === 0)) segment.style.borderRadius = '0 4px 4px 0';
+                barContainer.appendChild(segment);
+            }
         }
     }
 
     function harvestOtherTeams() {
         const st = getState();
-        // Clear other team gardens and show they harvested too
+        if (!st.haystackPoints || typeof st.haystackPoints === 'number') {
+            st.haystackPoints = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        }
+
+        // Calculate and add points for other teams, then clear their gardens
         for (let team = 2; team <= 4; team++) {
             const garden = st.gardens[team];
+            let teamPoints = 0;
+            const stagePoints = [0, 10, 25, 50, 100];
+
             for (let i = 0; i < garden.plots.length; i++) {
+                const visualStage = getVisualStage(garden.plots[i].xp);
+                teamPoints += stagePoints[visualStage];
                 garden.plots[i].xp = 0;
                 garden.plots[i].stage = 0;
             }
+
+            st.haystackPoints[team] = (st.haystackPoints[team] || 0) + teamPoints;
             st.otherTeamProgress[team] = 0;
         }
         saveState();
@@ -1463,15 +1578,36 @@
 
     function randomlyGrowOtherTeams() {
         const st = getState();
-        // Randomly add XP to other team gardens
+        // More aggressive growth for other teams to hit benchmarks
         for (let team = 2; team <= 4; team++) {
-            if (Math.random() < 0.3) { // 30% chance per team
+            // Higher chance for growth (60% for ally team 2, 40% for others)
+            const growthChance = team === 2 ? 0.7 : 0.5;
+            if (Math.random() < growthChance) {
                 const garden = st.gardens[team];
-                const plotIndex = randomInt(0, 15);
-                const xpGain = randomInt(10, 30);
-                garden.plots[plotIndex].xp = Math.min(MAX_PLOT_XP, garden.plots[plotIndex].xp + xpGain);
-                garden.plots[plotIndex].stage = getStageFromXP(garden.plots[plotIndex].xp);
-                st.otherTeamProgress[team] = (st.otherTeamProgress[team] || 0) + xpGain;
+
+                // Find plots that need growth (prioritize lower XP plots to hit benchmarks)
+                const plotsByXP = [];
+                for (let i = 0; i < 16; i++) {
+                    plotsByXP.push({ index: i, xp: garden.plots[i].xp });
+                }
+                plotsByXP.sort((a, b) => a.xp - b.xp);
+
+                // Grow 1-3 plots, preferring lower XP ones
+                const plotsToGrow = randomInt(1, 3);
+                for (let p = 0; p < plotsToGrow && p < plotsByXP.length; p++) {
+                    const plotIndex = plotsByXP[p].index;
+                    // XP gain scales to help hit benchmarks faster
+                    const currentXP = garden.plots[plotIndex].xp;
+                    let xpGain;
+                    if (currentXP < 50) xpGain = randomInt(15, 30); // Push toward stage 1
+                    else if (currentXP < 150) xpGain = randomInt(20, 40); // Push toward stage 2
+                    else if (currentXP < 400) xpGain = randomInt(30, 60); // Push toward stage 3
+                    else xpGain = randomInt(40, 80); // Push toward stage 4
+
+                    garden.plots[plotIndex].xp += xpGain;
+                    garden.plots[plotIndex].stage = getStageFromXP(garden.plots[plotIndex].xp);
+                    st.otherTeamProgress[team] = (st.otherTeamProgress[team] || 0) + xpGain;
+                }
             }
         }
         saveState();
@@ -1481,12 +1617,13 @@
 
     function startTeammateSimulation() {
         if (teammateInterval) return;
+        // Faster interval for more activity
         teammateInterval = setInterval(function() {
             const st = getState();
             if (st.currentView === 'garden') {
-                // Random chance for teammate to add seeds
-                if (Math.random() < 0.15) { // 15% chance every 3 seconds
-                    const seedAmount = randomInt(1, 5);
+                // Higher chance for teammate to add seeds (40% every 1.5 seconds)
+                if (Math.random() < 0.4) {
+                    const seedAmount = randomInt(2, 8);
                     addSeeds(seedAmount);
 
                     // Show floating notification
@@ -1495,17 +1632,17 @@
                         const rect = gardenCanvas.getBoundingClientRect();
                         const x = rect.left + Math.random() * rect.width;
                         const y = rect.top + 20;
-                        const teammates = ['Alex', 'Sam', 'Jordan', 'Taylor'];
-                        const name = teammates[randomInt(0, 3)];
+                        const teammates = ['Alex', 'Sam', 'Jordan', 'Taylor', 'Riley', 'Casey'];
+                        const name = teammates[randomInt(0, 5)];
                         showFloatingText(name + ' +' + seedAmount + ' 🌱', x, y, '#4CAF50');
                         playCoinCollect();
                     }
                 }
 
-                // Also grow other team gardens
+                // Grow other team gardens more frequently
                 randomlyGrowOtherTeams();
             }
-        }, 3000);
+        }, 1500); // Faster interval
     }
 
     function stopTeammateSimulation() {
@@ -1602,15 +1739,40 @@
     function handleGoButton() {
         playClick();
 
-        // Give seeds
-        const seedsToAdd = randomInt(1, 3);
+        const st = getState();
+        const mult = st.goMultiplier || 1;
+
+        // Give seeds based on multiplier
+        const baseSeeds = randomInt(1, 3);
+        const seedsToAdd = baseSeeds * mult;
         addSeeds(seedsToAdd);
 
         // Show +N text over GO button
         showGoRewardText('+' + seedsToAdd);
 
         // Fly seed icons to the seed counter
-        flySedsFromGoButton(seedsToAdd);
+        flySedsFromGoButton(Math.min(seedsToAdd, 10)); // Cap visual at 10
+    }
+
+    function cycleGoMultiplier() {
+        const multipliers = [1, 3, 5, 10];
+        const currentIndex = multipliers.indexOf(state.goMultiplier || 1);
+        const nextIndex = (currentIndex + 1) % multipliers.length;
+        state.goMultiplier = multipliers[nextIndex];
+        saveState();
+        updateGoMultiplierButton();
+        playClick();
+    }
+
+    function updateGoMultiplierButton() {
+        const btn = document.getElementById('go-multiplier-btn');
+        if (!btn) return;
+        const mult = state.goMultiplier || 1;
+        btn.textContent = mult + 'x';
+        btn.className = 'go-multiplier-btn';
+        if (mult === 3) btn.classList.add('x3');
+        else if (mult === 5) btn.classList.add('x5');
+        else if (mult === 10) btn.classList.add('x10');
     }
 
     function showFloatingText(text, x, y, color) {
@@ -1765,8 +1927,14 @@
         // Wins button
         document.getElementById('leaderboard-nav').addEventListener('click', handleWinsClick);
 
+        // GO multiplier button
+        document.getElementById('go-multiplier-btn').addEventListener('click', cycleGoMultiplier);
+
         // Start teammate simulation
         startTeammateSimulation();
+
+        // Update GO multiplier display
+        updateGoMultiplierButton();
 
         // State updates
         subscribeState(function(st) {
