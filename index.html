@@ -59,12 +59,17 @@
                         <span class="go-sub">TAP TO GARDEN</span>
                     </div>
                 </div>
+                <button id="harvest-trigger-btn" class="harvest-trigger hidden">
+                    <span class="harvest-icon">🌾</span>
+                    <span class="harvest-label">HARVEST</span>
+                </button>
             </div>
 
             <!-- Bottom Nav -->
             <div id="bottom-nav">
-                <div class="nav-item">
+                <div class="nav-item" id="leaderboard-nav">
                     <span class="nav-icon">🏆</span>
+                    <span id="leaderboard-count" class="nav-badge">0</span>
                     <span class="nav-label">WINS</span>
                 </div>
                 <div class="nav-item">
@@ -129,6 +134,25 @@
                     <span class="roll-text">ROLL</span>
                     <span class="roll-cost">-1 🌱</span>
                 </button>
+            </div>
+
+            <!-- Harvest Button (shown when ready) -->
+            <div id="harvest-button-area" class="hidden">
+                <button id="harvest-btn" class="harvest-button">
+                    <span class="harvest-text">HARVEST</span>
+                    <span class="harvest-sub">Collect your crops!</span>
+                </button>
+            </div>
+
+            <!-- Harvest Animation Overlay -->
+            <div id="harvest-overlay" class="hidden">
+                <div class="harvest-content">
+                    <div class="harvest-title">HARVESTING</div>
+                    <div class="harvest-progress-bar">
+                        <div id="harvest-progress-fill" class="harvest-progress-fill"></div>
+                    </div>
+                    <div id="harvest-status">Gathering crops...</div>
+                </div>
             </div>
         </div>
     </div>

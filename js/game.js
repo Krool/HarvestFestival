@@ -53,10 +53,12 @@
         return {
             seeds: 50,
             coins: 0,
+            wins: 0,
             timerEnd: now + TIMER_DURATION,
             currentView: 'board',
             selectedTeam: 1,
             totalXP: 0,
+            needsHarvest: false,
             gardens: {
                 1: createGarden(),
                 2: createGarden(),
@@ -82,6 +84,8 @@
                 state = JSON.parse(saved);
                 if (!state.totalXP) state.totalXP = 0;
                 if (!state.coins) state.coins = 0;
+                if (!state.wins) state.wins = 0;
+                if (state.needsHarvest === undefined) state.needsHarvest = false;
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
                     state.timerEnd = Date.now() + TIMER_DURATION;
@@ -188,6 +192,48 @@
             }
         }
         return total;
+    }
+
+    function checkGardenFull(team) {
+        const garden = state.gardens[team];
+        for (let i = 0; i < garden.plots.length; i++) {
+            if (garden.plots[i].xp < 100) return false;
+        }
+        return true;
+    }
+
+    function setNeedsHarvest(value) {
+        state.needsHarvest = value;
+        saveState();
+        notifyStateListeners();
+    }
+
+    function clearGarden(team) {
+        const garden = state.gardens[team];
+        for (let i = 0; i < garden.plots.length; i++) {
+            garden.plots[i].xp = 0;
+            garden.plots[i].stage = 0;
+        }
+        saveState();
+        notifyStateListeners();
+    }
+
+    function addCoins(amount) {
+        state.coins += amount;
+        saveState();
+        notifyStateListeners();
+    }
+
+    function addSeeds(amount) {
+        state.seeds += amount;
+        saveState();
+        notifyStateListeners();
+    }
+
+    function addWin() {
+        state.wins = (state.wins || 0) + 1;
+        saveState();
+        notifyStateListeners();
     }
 
     // ==================== AUDIO ====================
@@ -392,6 +438,41 @@
         noise.stop(ctx.currentTime + 0.15);
     }
 
+    function playHarvestChime() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        for (let i = 0; i < notes.length; i++) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            const startTime = ctx.currentTime + i * 0.1;
+            osc.frequency.setValueAtTime(notes[i], startTime);
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+        }
+    }
+
+    function playCoinCollect() {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(1200, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1800, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+    }
+
     // ==================== BOARD ====================
     const TEAM_COLORS = {
         1: '#00CED1',
@@ -585,17 +666,19 @@
     }
 
     function drawCenterArea(cx, cy, st) {
-        const centerSize = boardSize * 0.45;
+        const centerSize = boardSize * 0.52;
+        const quadSize = centerSize * 0.46;
+        const gap = 4;
 
         boardCtx.save();
         boardCtx.translate(cx, cy);
 
-        // Team quadrants as triangular slices
+        // Team quadrants as 2x2 grid of squares
         const quadrants = [
-            { team: 1, angle: -Math.PI / 2 },
-            { team: 2, angle: 0 },
-            { team: 3, angle: Math.PI },
-            { team: 4, angle: Math.PI / 2 }
+            { team: 1, x: -quadSize - gap/2, y: -quadSize - gap/2 }, // Top-left
+            { team: 2, x: gap/2, y: -quadSize - gap/2 },             // Top-right
+            { team: 3, x: -quadSize - gap/2, y: gap/2 },             // Bottom-left
+            { team: 4, x: gap/2, y: gap/2 }                          // Bottom-right
         ];
 
         for (let q = 0; q < quadrants.length; q++) {
@@ -603,58 +686,57 @@
             const color = TEAM_COLORS[quad.team];
             const garden = st.gardens[quad.team];
 
-            boardCtx.save();
-            boardCtx.rotate(quad.angle);
-
-            // Triangle slice
-            boardCtx.beginPath();
-            boardCtx.moveTo(0, 0);
-            boardCtx.lineTo(-centerSize * 0.5, -centerSize * 0.7);
-            boardCtx.lineTo(centerSize * 0.5, -centerSize * 0.7);
-            boardCtx.closePath();
-            boardCtx.fillStyle = hexToRgba(color, 0.75);
+            // Square quadrant background
+            boardCtx.fillStyle = hexToRgba(color, 0.85);
+            drawRoundedRect(boardCtx, quad.x, quad.y, quadSize, quadSize, 6);
             boardCtx.fill();
             boardCtx.strokeStyle = hexToRgba(color, 1);
             boardCtx.lineWidth = 2;
             boardCtx.stroke();
 
-            // Mini garden
-            const gardenY = -centerSize * 0.55;
-            const gardenSize = centerSize * 0.28;
-            drawMiniGarden(boardCtx, 0, gardenY, gardenSize, garden);
+            // Mini garden (top portion of quadrant)
+            const gardenSize = quadSize * 0.55;
+            const gardenX = quad.x + (quadSize - gardenSize) / 2;
+            const gardenY = quad.y + 6;
+            drawMiniGarden(boardCtx, gardenX + gardenSize/2, gardenY + gardenSize/2, gardenSize, garden);
 
-            // Haystack
+            // Haystack (bottom portion)
+            const haystackY = quad.y + gardenSize + 10;
             boardCtx.fillStyle = '#D4A574';
-            drawRoundedRect(boardCtx, -15, -centerSize * 0.32, 30, 22, 4);
+            drawRoundedRect(boardCtx, quad.x + quadSize/2 - 18, haystackY, 36, 20, 4);
             boardCtx.fill();
+            boardCtx.strokeStyle = '#8B7355';
+            boardCtx.lineWidth = 1;
+            boardCtx.stroke();
             boardCtx.font = '14px Arial';
             boardCtx.textAlign = 'center';
-            boardCtx.fillText('🌾', 0, -centerSize * 0.22);
+            boardCtx.fillText('🌾', quad.x + quadSize/2, haystackY + 14);
 
             // Team label
             boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 12px Arial';
+            boardCtx.font = 'bold 10px Arial';
             boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
             boardCtx.shadowBlur = 2;
-            boardCtx.fillText(TEAM_NAMES[quad.team], 0, -centerSize * 0.12);
+            boardCtx.fillText(TEAM_NAMES[quad.team], quad.x + quadSize/2, quad.y + quadSize - 6);
             boardCtx.shadowBlur = 0;
-
-            boardCtx.restore();
         }
 
-        // Center: Community Chest & Chance
-        boardCtx.fillStyle = '#4169E1';
-        drawRoundedRect(boardCtx, -35, -12, 30, 24, 4);
+        // Center overlay: Community Chest & Chance (small in the very center)
+        boardCtx.fillStyle = 'rgba(200,230,201,0.9)';
+        drawRoundedRect(boardCtx, -25, -18, 50, 36, 6);
         boardCtx.fill();
-        boardCtx.fillStyle = '#fff';
-        boardCtx.font = '12px Arial';
+
+        boardCtx.fillStyle = '#4169E1';
+        drawRoundedRect(boardCtx, -20, -12, 18, 18, 3);
+        boardCtx.fill();
+        boardCtx.font = '10px Arial';
         boardCtx.textAlign = 'center';
-        boardCtx.fillText('📦', -20, 4);
+        boardCtx.fillText('📦', -11, 2);
 
         boardCtx.fillStyle = '#FF8C00';
-        drawRoundedRect(boardCtx, 5, -12, 30, 24, 4);
+        drawRoundedRect(boardCtx, 2, -12, 18, 18, 3);
         boardCtx.fill();
-        boardCtx.fillText('❓', 20, 4);
+        boardCtx.fillText('❓', 11, 2);
 
         boardCtx.restore();
     }
@@ -871,7 +953,8 @@
 
     function updateDiceButton() {
         const st = getState();
-        rollBtn.disabled = st.seeds < 1 || isRolling;
+        const gardenFull = checkGardenFull(st.selectedTeam);
+        rollBtn.disabled = st.seeds < 1 || isRolling || st.needsHarvest || gardenFull;
     }
 
     function handleRoll() {
@@ -972,6 +1055,15 @@
             }
         }
         renderGarden();
+
+        // Check if garden is now full
+        const st = getState();
+        if (checkGardenFull(st.selectedTeam)) {
+            setTimeout(function() {
+                setNeedsHarvest(true);
+                updateAllUI(getState());
+            }, 600);
+        }
     }
 
     // ==================== UI UPDATE ====================
@@ -996,6 +1088,10 @@
         const haystackCount = document.getElementById('haystack-count');
         if (haystackCount) haystackCount.textContent = st.seeds;
 
+        // Leaderboard/wins count
+        const leaderboardCount = document.getElementById('leaderboard-count');
+        if (leaderboardCount) leaderboardCount.textContent = st.wins || 0;
+
         // Event progress
         const totalProgress = getTotalProgress();
         const maxProgress = 6400; // 4 teams * 16 plots * 100 xp
@@ -1012,6 +1108,42 @@
 
         // Dice button
         updateDiceButton();
+
+        // Harvest UI state
+        updateHarvestUI(st);
+    }
+
+    function updateHarvestUI(st) {
+        const harvestTrigger = document.getElementById('harvest-trigger-btn');
+        const rollBtnArea = document.getElementById('roll-button-area');
+        const harvestBtnArea = document.getElementById('harvest-button-area');
+        const diceArea = document.getElementById('dice-area');
+
+        // Check if current garden is full
+        const gardenFull = checkGardenFull(st.selectedTeam);
+
+        if (st.needsHarvest || gardenFull) {
+            // Show harvest trigger on board
+            if (harvestTrigger) harvestTrigger.classList.remove('hidden');
+
+            // In garden view, show harvest button instead of roll
+            if (rollBtnArea) rollBtnArea.classList.add('hidden');
+            if (harvestBtnArea) harvestBtnArea.classList.remove('hidden');
+            if (diceArea) diceArea.style.opacity = '0.5';
+
+            // Set needs harvest if garden is full
+            if (gardenFull && !st.needsHarvest) {
+                setNeedsHarvest(true);
+            }
+        } else {
+            // Hide harvest trigger
+            if (harvestTrigger) harvestTrigger.classList.add('hidden');
+
+            // Show roll button
+            if (rollBtnArea) rollBtnArea.classList.remove('hidden');
+            if (harvestBtnArea) harvestBtnArea.classList.add('hidden');
+            if (diceArea) diceArea.style.opacity = '1';
+        }
     }
 
     function updateTimer() {
@@ -1038,6 +1170,151 @@
             notification.style.opacity = '0';
             setTimeout(function() { notification.remove(); }, 500);
         }, 2000);
+    }
+
+    // ==================== HARVEST ====================
+    let isHarvesting = false;
+
+    function startHarvest() {
+        if (isHarvesting) return;
+        isHarvesting = true;
+        playClick();
+
+        const overlay = document.getElementById('harvest-overlay');
+        const progressFill = document.getElementById('harvest-progress-fill');
+        const status = document.getElementById('harvest-status');
+
+        overlay.classList.remove('hidden');
+        progressFill.style.width = '0%';
+        status.textContent = 'Gathering crops...';
+
+        // Animate progress bar
+        let progress = 0;
+        const harvestInterval = setInterval(function() {
+            progress += 2;
+            progressFill.style.width = progress + '%';
+
+            if (progress >= 30 && progress < 35) {
+                status.textContent = 'Bundling hay...';
+                playHarvestChime();
+            } else if (progress >= 60 && progress < 65) {
+                status.textContent = 'Counting rewards...';
+            } else if (progress >= 90 && progress < 95) {
+                status.textContent = 'Almost done!';
+            }
+
+            if (progress >= 100) {
+                clearInterval(harvestInterval);
+                completeHarvest(overlay);
+            }
+        }, 40);
+    }
+
+    function completeHarvest(overlay) {
+        const st = getState();
+
+        // Calculate rewards
+        const garden = st.gardens[st.selectedTeam];
+        let totalXP = 0;
+        for (let i = 0; i < garden.plots.length; i++) {
+            totalXP += garden.plots[i].xp;
+        }
+
+        const coinReward = Math.floor(totalXP / 10);
+        const seedReward = Math.floor(totalXP / 50);
+
+        playFullBoardFanfare();
+
+        // Hide overlay after short delay
+        setTimeout(function() {
+            overlay.classList.add('hidden');
+
+            // Fly rewards to HUD
+            flyRewardsToHUD(coinReward, seedReward);
+
+            // Clear garden and reset harvest state
+            setTimeout(function() {
+                clearGarden(st.selectedTeam);
+                setNeedsHarvest(false);
+                addCoins(coinReward);
+                addSeeds(seedReward);
+                addWin();
+                isHarvesting = false;
+                renderGarden();
+                updateAllUI(getState());
+            }, 1500);
+        }, 500);
+    }
+
+    function flyRewardsToHUD(coins, seeds) {
+        const gardenCanvas = document.getElementById('garden-canvas');
+        const canvasRect = gardenCanvas.getBoundingClientRect();
+        const startX = canvasRect.left + canvasRect.width / 2;
+        const startY = canvasRect.top + canvasRect.height / 2;
+
+        // Get target positions
+        const coinTarget = document.getElementById('top-coins');
+        const seedTarget = document.getElementById('top-seeds');
+        const leaderboardTarget = document.getElementById('leaderboard-nav');
+
+        // Fly coins
+        for (let i = 0; i < Math.min(coins, 8); i++) {
+            setTimeout(function() {
+                createFlyingReward('🪙', startX + (Math.random() - 0.5) * 100,
+                    startY + (Math.random() - 0.5) * 100, coinTarget, 'coin');
+                playCoinCollect();
+            }, i * 80);
+        }
+
+        // Fly seeds
+        for (let i = 0; i < Math.min(seeds, 5); i++) {
+            setTimeout(function() {
+                createFlyingReward('🌱', startX + (Math.random() - 0.5) * 100,
+                    startY + (Math.random() - 0.5) * 100, seedTarget, 'seed');
+            }, 400 + i * 100);
+        }
+
+        // Fly hay to leaderboard
+        setTimeout(function() {
+            createFlyingReward('🌾', startX, startY, leaderboardTarget, 'hay');
+            playHarvestChime();
+        }, 800);
+    }
+
+    function createFlyingReward(emoji, startX, startY, targetEl, type) {
+        const reward = document.createElement('div');
+        reward.className = 'flying-reward ' + type;
+        reward.textContent = emoji;
+        reward.style.left = startX + 'px';
+        reward.style.top = startY + 'px';
+        document.body.appendChild(reward);
+
+        // Get target position
+        const targetRect = targetEl.getBoundingClientRect();
+        const targetX = targetRect.left + targetRect.width / 2;
+        const targetY = targetRect.top + targetRect.height / 2;
+
+        // Animate to target
+        requestAnimationFrame(function() {
+            reward.style.left = targetX + 'px';
+            reward.style.top = targetY + 'px';
+            reward.style.opacity = '0';
+            reward.style.transform = 'scale(0.3)';
+        });
+
+        // Remove after animation
+        setTimeout(function() {
+            reward.remove();
+        }, 700);
+    }
+
+    function triggerHarvestFromBoard() {
+        playClick();
+        playSwoosh();
+        setState({ currentView: 'garden' });
+        showGardenView();
+        // Small delay then auto-start harvest
+        setTimeout(startHarvest, 300);
     }
 
     // ==================== NAVIGATION ====================
@@ -1091,6 +1368,10 @@
         document.getElementById('go-button').addEventListener('click', navigateToGarden);
         document.getElementById('garden-badge').addEventListener('click', navigateToGarden);
         document.getElementById('back-btn').addEventListener('click', navigateToBoard);
+
+        // Harvest handlers
+        document.getElementById('harvest-trigger-btn').addEventListener('click', triggerHarvestFromBoard);
+        document.getElementById('harvest-btn').addEventListener('click', startHarvest);
 
         // State updates
         subscribeState(function(st) {
