@@ -1324,33 +1324,77 @@
     // ==================== GO BUTTON ====================
     function handleGoButton() {
         playClick();
-        playCoinCollect();
 
         // Give seeds
         const seedsToAdd = randomInt(1, 3);
         addSeeds(seedsToAdd);
 
-        // Show floating notification
-        showFloatingReward('+' + seedsToAdd + ' 🌱');
+        // Show +N text over GO button
+        showGoRewardText('+' + seedsToAdd);
+
+        // Fly seed icons to the seed counter
+        flySedsFromGoButton(seedsToAdd);
     }
 
-    function showFloatingReward(text) {
+    function showGoRewardText(text) {
         const goButton = document.getElementById('go-button');
         const rect = goButton.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
 
         const notification = document.createElement('div');
-        notification.style.cssText = 'position:fixed;color:#4CAF50;font-size:24px;font-weight:bold;z-index:100;pointer-events:none;text-shadow:2px 2px 4px rgba(0,0,0,0.5);transition:all 0.8s ease-out;';
-        notification.style.left = (rect.left + rect.width / 2) + 'px';
-        notification.style.top = rect.top + 'px';
+        notification.style.cssText = 'position:fixed;color:#4CAF50;font-size:32px;font-weight:bold;z-index:100;pointer-events:none;text-shadow:2px 2px 4px rgba(0,0,0,0.7), 0 0 10px rgba(76,175,80,0.5);transition:all 0.6s ease-out;transform:translate(-50%,-50%) scale(0.5);opacity:0;';
+        notification.style.left = centerX + 'px';
+        notification.style.top = centerY + 'px';
         notification.textContent = text;
         document.body.appendChild(notification);
 
+        // Pop in
         requestAnimationFrame(function() {
-            notification.style.top = (rect.top - 60) + 'px';
-            notification.style.opacity = '0';
+            notification.style.transform = 'translate(-50%,-50%) scale(1.2)';
+            notification.style.opacity = '1';
+
+            setTimeout(function() {
+                notification.style.transform = 'translate(-50%,-150%) scale(0.8)';
+                notification.style.opacity = '0';
+            }, 400);
         });
 
-        setTimeout(function() { notification.remove(); }, 800);
+        setTimeout(function() { notification.remove(); }, 1000);
+    }
+
+    function flySedsFromGoButton(count) {
+        const goButton = document.getElementById('go-button');
+        const seedTarget = document.getElementById('top-seeds');
+        const goRect = goButton.getBoundingClientRect();
+        const targetRect = seedTarget.getBoundingClientRect();
+
+        const startX = goRect.left + goRect.width / 2;
+        const startY = goRect.top + goRect.height / 2;
+        const endX = targetRect.left + targetRect.width / 2;
+        const endY = targetRect.top + targetRect.height / 2;
+
+        for (let i = 0; i < count; i++) {
+            setTimeout(function() {
+                const seed = document.createElement('div');
+                seed.className = 'flying-reward seed';
+                seed.textContent = '🌱';
+                seed.style.left = (startX + (Math.random() - 0.5) * 40) + 'px';
+                seed.style.top = (startY + (Math.random() - 0.5) * 40) + 'px';
+                document.body.appendChild(seed);
+
+                playCoinCollect();
+
+                requestAnimationFrame(function() {
+                    seed.style.left = endX + 'px';
+                    seed.style.top = endY + 'px';
+                    seed.style.opacity = '0';
+                    seed.style.transform = 'scale(0.3)';
+                });
+
+                setTimeout(function() { seed.remove(); }, 700);
+            }, i * 100);
+        }
     }
 
     // ==================== NAVIGATION ====================
