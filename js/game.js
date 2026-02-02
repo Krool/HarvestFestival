@@ -829,11 +829,11 @@
                 const haySize = minHaySize + (maxHaySize - minHaySize) * sizeScale;
                 const textSize = 10 + sizeScale * 14;
 
-                // Anchor at corner closest to center, offset by haySize * maxModifier / 2
+                // Anchor at corner closest to center, offset by haySize * maxModifier / 4 (half)
                 // Direction toward this quadrant's outer tip (normalized)
                 const dirX = pts[0][0] / centerDiamondSize;
                 const dirY = pts[0][1] / centerDiamondSize;
-                const offset = haySize * maxModifier / 2;
+                const offset = haySize * maxModifier / 4;
                 const haystackX = dirX * offset;
                 const haystackY = dirY * offset;
 
