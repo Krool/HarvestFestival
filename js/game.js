@@ -871,37 +871,6 @@
         // Chance - bottom tip of purple quadrant (Team 3)
         boardCtx.fillText('❓', 0, centerDiamondSize * 0.75);
 
-        // Central haystack - grows with harvests
-        const haystackSize = st.centralHaystackSize || 1;
-        const baseSize = 40;
-        const maxSize = 90;
-        const currentSize = baseSize + (haystackSize - 1) * ((maxSize - baseSize) / 9);
-
-        // Draw haystack background
-        boardCtx.fillStyle = '#D4A574';
-        boardCtx.beginPath();
-        boardCtx.arc(0, 0, currentSize / 2 + 6, 0, Math.PI * 2);
-        boardCtx.fill();
-        boardCtx.strokeStyle = '#8B7355';
-        boardCtx.lineWidth = 3;
-        boardCtx.stroke();
-
-        // Draw multiple hay emojis based on size
-        const hayFontSize = Math.max(24, Math.min(50, currentSize * 0.8));
-        boardCtx.font = hayFontSize + 'px Arial';
-        boardCtx.fillText('🌾', 0, 0);
-
-        // Add extra hay for larger stacks
-        if (haystackSize >= 3) {
-            boardCtx.font = (hayFontSize * 0.6) + 'px Arial';
-            boardCtx.fillText('🌾', -currentSize * 0.3, -currentSize * 0.2);
-        }
-        if (haystackSize >= 5) {
-            boardCtx.fillText('🌾', currentSize * 0.3, -currentSize * 0.2);
-        }
-        if (haystackSize >= 7) {
-            boardCtx.fillText('🌾', 0, -currentSize * 0.35);
-        }
 
         boardCtx.restore();
     }
