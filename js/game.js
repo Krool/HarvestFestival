@@ -841,14 +841,14 @@
             boardCtx.shadowBlur = 0;
         }
 
-        // Community Chest - top corner of Team 2 (red/right quadrant)
+        // Community Chest - top-left corner (between cyan/blue Team 1 and green Team 4)
         boardCtx.font = '48px Arial';
         boardCtx.textAlign = 'center';
         boardCtx.textBaseline = 'middle';
-        boardCtx.fillText('📦', centerDiamondSize * 0.5, -centerDiamondSize * 0.5);
+        boardCtx.fillText('📦', -centerDiamondSize * 0.5, -centerDiamondSize * 0.5);
 
-        // Chance - bottom corner of Team 3 (purple/bottom quadrant)
-        boardCtx.fillText('❓', centerDiamondSize * 0.5, centerDiamondSize * 0.5);
+        // Chance - bottom-left corner (between purple Team 3 and green Team 4)
+        boardCtx.fillText('❓', -centerDiamondSize * 0.5, centerDiamondSize * 0.5);
 
         // Central haystack - grows with harvests
         const haystackSize = st.centralHaystackSize || 1;
