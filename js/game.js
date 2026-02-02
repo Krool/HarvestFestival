@@ -779,6 +779,7 @@
             { team: 4, points: [[-centerDiamondSize, 0], [-centerDiamondSize * 0.5, -centerDiamondSize * 0.5], [0, 0], [-centerDiamondSize * 0.5, centerDiamondSize * 0.5]] }
         ];
 
+        // First pass: draw all quadrant backgrounds and gardens
         for (let q = 0; q < quadrants.length; q++) {
             const quad = quadrants[q];
             const color = TEAM_COLORS[quad.team];
@@ -807,37 +808,56 @@
             const gardenOffsetX = quadCenterX * 0.75;
             const gardenOffsetY = quadCenterY * 0.75;
             drawMiniGarden(boardCtx, gardenOffsetX, gardenOffsetY, gardenSize, garden);
+        }
 
-            // Team haystack - positioned at side corner of quadrant (inverted from outer tip)
+        // Second pass: draw all team haystacks on top of quadrants
+        for (let q = 0; q < quadrants.length; q++) {
+            const quad = quadrants[q];
+            const color = TEAM_COLORS[quad.team];
+            const pts = quad.points;
             const teamPoints = st.haystackPoints[quad.team] || 0;
-            if (teamPoints > 0) {
-                // Use pts[1] (clockwise corner) instead of pts[0] (outer tip) to invert position
-                const haystackOffsetX = pts[1][0] * 0.7;
-                const haystackOffsetY = pts[1][1] * 0.7;
 
+            if (teamPoints > 0) {
                 // Scale haystack size based on points
                 // Max harvest at level 4 = 16 plots * 100 pts = 1600 pts
                 // Size scales from 27px (min) to 108px (4x, max)
                 const minHaySize = 27;
                 const maxHaySize = 108;
+                const maxModifier = 4;
                 const maxHarvestPoints = 1600;
                 const sizeScale = Math.min(1, teamPoints / maxHarvestPoints);
                 const haySize = minHaySize + (maxHaySize - minHaySize) * sizeScale;
-                const textSize = 10 + sizeScale * 14; // Scale text from 10px to 24px
-                const textOffset = haySize * 0.6;
+                const textSize = 10 + sizeScale * 14;
 
-                // Draw haystack icon (scales with points)
+                // Anchor at corner closest to center, offset by haySize * maxModifier / 2
+                // Direction toward this quadrant's outer tip (normalized)
+                const dirX = pts[0][0] / centerDiamondSize;
+                const dirY = pts[0][1] / centerDiamondSize;
+                const offset = haySize * maxModifier / 2;
+                const haystackX = dirX * offset;
+                const haystackY = dirY * offset;
+
+                // Draw team-colored background circle to show ownership
+                boardCtx.fillStyle = color;
+                boardCtx.beginPath();
+                boardCtx.arc(haystackX, haystackY, haySize * 0.55, 0, Math.PI * 2);
+                boardCtx.fill();
+                boardCtx.strokeStyle = '#fff';
+                boardCtx.lineWidth = 2;
+                boardCtx.stroke();
+
+                // Draw haystack icon
                 boardCtx.font = Math.round(haySize) + 'px Arial';
                 boardCtx.textAlign = 'center';
                 boardCtx.textBaseline = 'middle';
-                boardCtx.fillText('🌾', haystackOffsetX, haystackOffsetY);
+                boardCtx.fillText('🌾', haystackX, haystackY);
 
-                // Show points underneath (also scales)
+                // Show points underneath
                 boardCtx.fillStyle = '#fff';
                 boardCtx.font = 'bold ' + Math.round(textSize) + 'px Arial';
                 boardCtx.shadowColor = 'rgba(0,0,0,0.8)';
-                boardCtx.shadowBlur = 2;
-                boardCtx.fillText(teamPoints, haystackOffsetX, haystackOffsetY + textOffset);
+                boardCtx.shadowBlur = 3;
+                boardCtx.fillText(teamPoints, haystackX, haystackY + haySize * 0.6);
                 boardCtx.shadowBlur = 0;
             }
         }
