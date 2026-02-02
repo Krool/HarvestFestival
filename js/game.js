@@ -815,18 +815,29 @@
                 const haystackOffsetX = pts[1][0] * 0.7;
                 const haystackOffsetY = pts[1][1] * 0.7;
 
-                // Draw haystack icon (50% bigger: 18px -> 27px)
-                boardCtx.font = '27px Arial';
+                // Scale haystack size based on points
+                // Max harvest at level 4 = 16 plots * 100 pts = 1600 pts
+                // Size scales from 27px (min) to 108px (4x, max)
+                const minHaySize = 27;
+                const maxHaySize = 108;
+                const maxHarvestPoints = 1600;
+                const sizeScale = Math.min(1, teamPoints / maxHarvestPoints);
+                const haySize = minHaySize + (maxHaySize - minHaySize) * sizeScale;
+                const textSize = 10 + sizeScale * 14; // Scale text from 10px to 24px
+                const textOffset = haySize * 0.6;
+
+                // Draw haystack icon (scales with points)
+                boardCtx.font = Math.round(haySize) + 'px Arial';
                 boardCtx.textAlign = 'center';
                 boardCtx.textBaseline = 'middle';
                 boardCtx.fillText('🌾', haystackOffsetX, haystackOffsetY);
 
-                // Show points underneath
+                // Show points underneath (also scales)
                 boardCtx.fillStyle = '#fff';
-                boardCtx.font = 'bold 10px Arial';
+                boardCtx.font = 'bold ' + Math.round(textSize) + 'px Arial';
                 boardCtx.shadowColor = 'rgba(0,0,0,0.8)';
                 boardCtx.shadowBlur = 2;
-                boardCtx.fillText(teamPoints, haystackOffsetX, haystackOffsetY + 18);
+                boardCtx.fillText(teamPoints, haystackOffsetX, haystackOffsetY + textOffset);
                 boardCtx.shadowBlur = 0;
             }
         }
