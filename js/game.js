@@ -66,7 +66,9 @@
                 3: createGarden(),
                 4: createGarden()
             },
-            boardOffset: { x: 0, y: 0 }
+            boardOffset: { x: 0, y: 0 },
+            haystackSize: 1,
+            otherTeamProgress: { 2: 0, 3: 0, 4: 0 }
         };
     }
 
@@ -88,6 +90,8 @@
                 if (!state.wins) state.wins = 0;
                 if (state.needsHarvest === undefined) state.needsHarvest = false;
                 if (!state.multiplier) state.multiplier = 1;
+                if (!state.haystackSize) state.haystackSize = 1;
+                if (!state.otherTeamProgress) state.otherTeamProgress = { 2: 0, 3: 0, 4: 0 };
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
                     state.timerEnd = Date.now() + TIMER_DURATION;
@@ -1201,6 +1205,9 @@
 
         // Harvest UI state
         updateHarvestUI(st);
+
+        // Haystack display
+        updateHaystackDisplay();
     }
 
     function updateHarvestUI(st) {
@@ -1318,6 +1325,12 @@
             // Fly rewards to HUD
             flyRewardsToHUD(coinReward, seedReward);
 
+            // Increase haystack size
+            increaseHaystackSize(totalXP);
+
+            // Harvest other teams too (simulate teammates)
+            harvestOtherTeams();
+
             // Clear garden and reset harvest state
             setTimeout(function() {
                 clearGarden(st.selectedTeam);
@@ -1330,6 +1343,91 @@
                 updateAllUI(getState());
             }, 1500);
         }, 500);
+    }
+
+    function increaseHaystackSize(xpHarvested) {
+        const st = getState();
+        // Increase size based on XP harvested (cap at 5)
+        const sizeIncrease = Math.ceil(xpHarvested / 2000);
+        st.haystackSize = Math.min(5, (st.haystackSize || 1) + sizeIncrease);
+        saveState();
+        updateHaystackDisplay();
+    }
+
+    function updateHaystackDisplay() {
+        const st = getState();
+        const haystackIcon = document.querySelector('.haystack-icon');
+        if (haystackIcon) {
+            haystackIcon.className = 'haystack-icon size-' + (st.haystackSize || 1);
+        }
+    }
+
+    function harvestOtherTeams() {
+        const st = getState();
+        // Clear other team gardens and show they harvested too
+        for (let team = 2; team <= 4; team++) {
+            const garden = st.gardens[team];
+            for (let i = 0; i < garden.plots.length; i++) {
+                garden.plots[i].xp = 0;
+                garden.plots[i].stage = 0;
+            }
+            st.otherTeamProgress[team] = 0;
+        }
+        saveState();
+    }
+
+    function randomlyGrowOtherTeams() {
+        const st = getState();
+        // Randomly add XP to other team gardens
+        for (let team = 2; team <= 4; team++) {
+            if (Math.random() < 0.3) { // 30% chance per team
+                const garden = st.gardens[team];
+                const plotIndex = randomInt(0, 15);
+                const xpGain = randomInt(10, 30);
+                garden.plots[plotIndex].xp = Math.min(MAX_PLOT_XP, garden.plots[plotIndex].xp + xpGain);
+                garden.plots[plotIndex].stage = getStageFromXP(garden.plots[plotIndex].xp);
+                st.otherTeamProgress[team] = (st.otherTeamProgress[team] || 0) + xpGain;
+            }
+        }
+        saveState();
+    }
+
+    let teammateInterval = null;
+
+    function startTeammateSimulation() {
+        if (teammateInterval) return;
+        teammateInterval = setInterval(function() {
+            const st = getState();
+            if (st.currentView === 'garden') {
+                // Random chance for teammate to add seeds
+                if (Math.random() < 0.15) { // 15% chance every 3 seconds
+                    const seedAmount = randomInt(1, 5);
+                    addSeeds(seedAmount);
+
+                    // Show floating notification
+                    const gardenCanvas = document.getElementById('garden-canvas');
+                    if (gardenCanvas) {
+                        const rect = gardenCanvas.getBoundingClientRect();
+                        const x = rect.left + Math.random() * rect.width;
+                        const y = rect.top + 20;
+                        const teammates = ['Alex', 'Sam', 'Jordan', 'Taylor'];
+                        const name = teammates[randomInt(0, 3)];
+                        showFloatingText(name + ' +' + seedAmount + ' 🌱', x, y, '#4CAF50');
+                        playCoinCollect();
+                    }
+                }
+
+                // Also grow other team gardens
+                randomlyGrowOtherTeams();
+            }
+        }, 3000);
+    }
+
+    function stopTeammateSimulation() {
+        if (teammateInterval) {
+            clearInterval(teammateInterval);
+            teammateInterval = null;
+        }
     }
 
     function flyRewardsToHUD(coins, seeds) {
@@ -1428,6 +1526,32 @@
 
         // Fly seed icons to the seed counter
         flySedsFromGoButton(seedsToAdd);
+    }
+
+    function showFloatingText(text, x, y, color) {
+        color = color || '#FFD700';
+        const notification = document.createElement('div');
+        notification.className = 'floating-text';
+        notification.style.color = color;
+        notification.style.left = x + 'px';
+        notification.style.top = y + 'px';
+        notification.textContent = text;
+        document.body.appendChild(notification);
+
+        requestAnimationFrame(function() {
+            notification.style.top = (y - 50) + 'px';
+            notification.style.opacity = '0';
+        });
+
+        setTimeout(function() { notification.remove(); }, 800);
+    }
+
+    function handleWinsClick(e) {
+        playClick();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top;
+        showFloatingText('😉', x, y, '#FFD700');
     }
 
     function showGoRewardText(text) {
@@ -1552,6 +1676,12 @@
 
         // Multiplier button
         document.getElementById('multiplier-btn').addEventListener('click', handleMultiplierClick);
+
+        // Wins button
+        document.getElementById('leaderboard-nav').addEventListener('click', handleWinsClick);
+
+        // Start teammate simulation
+        startTeammateSimulation();
 
         // State updates
         subscribeState(function(st) {

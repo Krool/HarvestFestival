@@ -210,6 +210,7 @@ body {
     justify-content: center;
     overflow: hidden;
     position: relative;
+    margin-bottom: 0;
 }
 
 #board-canvas {
@@ -219,10 +220,14 @@ body {
 
 /* Bottom Action Area */
 #bottom-area {
-    display: flex;
-    justify-content: center;
-    padding: 10px;
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
 #go-button {
@@ -691,6 +696,34 @@ body {
 .nav-item {
     position: relative;
 }
+
+.nav-item:active {
+    transform: scale(0.95);
+}
+
+/* Floating text notification */
+.floating-text {
+    position: fixed;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 200;
+    pointer-events: none;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    transition: all 0.8s ease-out;
+    white-space: nowrap;
+}
+
+/* Haystack size variations */
+.haystack-icon {
+    font-size: 40px;
+    transition: transform 0.3s ease;
+}
+
+.haystack-icon.size-1 { transform: scale(1); }
+.haystack-icon.size-2 { transform: scale(1.15); }
+.haystack-icon.size-3 { transform: scale(1.3); }
+.haystack-icon.size-4 { transform: scale(1.5); }
+.haystack-icon.size-5 { transform: scale(1.7); }
 
 /* Flying reward animations */
 .flying-reward {
