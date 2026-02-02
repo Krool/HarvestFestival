@@ -68,6 +68,7 @@
             },
             boardOffset: { x: 0, y: 0 },
             haystackPoints: { 1: 0, 2: 0, 3: 0, 4: 0 },
+            centralHaystackSize: 1,
             goMultiplier: 1,
             otherTeamProgress: { 2: 0, 3: 0, 4: 0 }
         };
@@ -96,6 +97,7 @@
                 if (typeof state.haystackPoints === 'number' || state.haystackPoints === undefined) {
                     state.haystackPoints = { 1: state.haystackPoints || 0, 2: 0, 3: 0, 4: 0 };
                 }
+                if (!state.centralHaystackSize) state.centralHaystackSize = 1;
                 if (!state.otherTeamProgress) state.otherTeamProgress = { 2: 0, 3: 0, 4: 0 };
                 if (Date.now() >= state.timerEnd) {
                     state.seeds += 10;
@@ -751,7 +753,7 @@
     }
 
     function drawCenterArea(cx, cy, st) {
-        const centerDiamondSize = boardSize * 0.38;
+        const centerDiamondSize = boardSize * 0.44; // Bigger to use more space
 
         boardCtx.save();
         boardCtx.translate(cx, cy);
@@ -768,7 +770,7 @@
         boardCtx.stroke();
 
         // Team quadrants - each is a diamond taking 1/4 of the center
-        // Top, Right, Bottom, Left
+        // Team 1=Top (cyan), Team 2=Right (red), Team 3=Bottom (purple), Team 4=Left (green)
         const quadrants = [
             { team: 1, points: [[0, -centerDiamondSize], [centerDiamondSize * 0.5, -centerDiamondSize * 0.5], [0, 0], [-centerDiamondSize * 0.5, -centerDiamondSize * 0.5]] },
             { team: 2, points: [[centerDiamondSize, 0], [centerDiamondSize * 0.5, centerDiamondSize * 0.5], [0, 0], [centerDiamondSize * 0.5, -centerDiamondSize * 0.5]] },
@@ -799,36 +801,63 @@
             const quadCenterX = (pts[0][0] + pts[1][0] + pts[3][0]) / 3;
             const quadCenterY = (pts[0][1] + pts[1][1] + pts[3][1]) / 3;
 
-            // Mini garden in outer half of quadrant
-            const gardenSize = centerDiamondSize * 0.28;
-            const gardenOffsetX = quadCenterX * 0.7;
-            const gardenOffsetY = quadCenterY * 0.7;
+            // Mini garden - larger and positioned better
+            const gardenSize = centerDiamondSize * 0.32;
+            const gardenOffsetX = quadCenterX * 0.75;
+            const gardenOffsetY = quadCenterY * 0.75;
             drawMiniGarden(boardCtx, gardenOffsetX, gardenOffsetY, gardenSize, garden);
 
-            // Haystack near center
-            const haystackOffsetX = quadCenterX * 0.25;
-            const haystackOffsetY = quadCenterY * 0.25;
-            boardCtx.font = '14px Arial';
+            // Team label near outer edge
+            boardCtx.fillStyle = '#fff';
+            boardCtx.font = 'bold 10px Arial';
             boardCtx.textAlign = 'center';
             boardCtx.textBaseline = 'middle';
-            boardCtx.fillText('🌾', haystackOffsetX, haystackOffsetY);
-
-            // Team label
-            boardCtx.fillStyle = '#fff';
-            boardCtx.font = 'bold 9px Arial';
             boardCtx.shadowColor = 'rgba(0,0,0,0.7)';
             boardCtx.shadowBlur = 2;
-            boardCtx.fillText(TEAM_NAMES[quad.team], quadCenterX * 0.45, quadCenterY * 0.45 + 12);
+            boardCtx.fillText(TEAM_NAMES[quad.team], pts[0][0] * 0.85, pts[0][1] * 0.85);
             boardCtx.shadowBlur = 0;
         }
 
-        // Small center decoration
-        boardCtx.fillStyle = 'rgba(139,69,19,0.9)';
+        // Community Chest - top corner of Team 2 (red/right quadrant)
+        boardCtx.font = '16px Arial';
+        boardCtx.textAlign = 'center';
+        boardCtx.textBaseline = 'middle';
+        boardCtx.fillText('📦', centerDiamondSize * 0.5, -centerDiamondSize * 0.5);
+
+        // Chance - bottom corner of Team 3 (purple/bottom quadrant)
+        boardCtx.fillText('❓', centerDiamondSize * 0.5, centerDiamondSize * 0.5);
+
+        // Central haystack - grows with harvests
+        const haystackSize = st.centralHaystackSize || 1;
+        const baseSize = 20;
+        const maxSize = 50;
+        const currentSize = baseSize + (haystackSize - 1) * ((maxSize - baseSize) / 9);
+
+        // Draw haystack background
+        boardCtx.fillStyle = '#D4A574';
         boardCtx.beginPath();
-        boardCtx.arc(0, 0, 12, 0, Math.PI * 2);
+        boardCtx.arc(0, 0, currentSize / 2 + 4, 0, Math.PI * 2);
         boardCtx.fill();
-        boardCtx.font = '10px Arial';
-        boardCtx.fillText('🎲', 0, 1);
+        boardCtx.strokeStyle = '#8B7355';
+        boardCtx.lineWidth = 2;
+        boardCtx.stroke();
+
+        // Draw multiple hay emojis based on size
+        const hayFontSize = Math.max(14, Math.min(28, currentSize * 0.8));
+        boardCtx.font = hayFontSize + 'px Arial';
+        boardCtx.fillText('🌾', 0, 0);
+
+        // Add extra hay for larger stacks
+        if (haystackSize >= 3) {
+            boardCtx.font = (hayFontSize * 0.6) + 'px Arial';
+            boardCtx.fillText('🌾', -currentSize * 0.3, -currentSize * 0.2);
+        }
+        if (haystackSize >= 5) {
+            boardCtx.fillText('🌾', currentSize * 0.3, -currentSize * 0.2);
+        }
+        if (haystackSize >= 7) {
+            boardCtx.fillText('🌾', 0, -currentSize * 0.35);
+        }
 
         boardCtx.restore();
     }
@@ -1227,9 +1256,9 @@
 
     // ==================== UI UPDATE ====================
     function updateAllUI(st) {
-        // Top bar seeds
-        const topSeeds = document.getElementById('top-seeds');
-        if (topSeeds) topSeeds.textContent = st.seeds;
+        // Badge seeds (on garden button)
+        const badgeSeeds = document.getElementById('badge-seeds');
+        if (badgeSeeds) badgeSeeds.textContent = st.seeds;
 
         // Garden seeds
         const gardenSeeds = document.getElementById('garden-seeds');
@@ -1310,6 +1339,10 @@
 
         const bannerTimer = document.getElementById('banner-timer');
         if (bannerTimer) bannerTimer.textContent = timeStr;
+
+        // Also update garden timer
+        const gardenTimer = document.getElementById('garden-timer');
+        if (gardenTimer) gardenTimer.textContent = timeStr;
 
         const bonusSeeds = checkTimerExpired();
         if (bonusSeeds > 0) {
@@ -1409,6 +1442,9 @@
                     st.haystackPoints = { 1: 0, 2: 0, 3: 0, 4: 0 };
                 }
                 st.haystackPoints[1] = (st.haystackPoints[1] || 0) + totalPoints;
+
+                // Grow central haystack (visible on board)
+                st.centralHaystackSize = Math.min(10, (st.centralHaystackSize || 1) + 1);
 
                 saveState();
                 addWin();
@@ -1572,6 +1608,11 @@
 
             st.haystackPoints[team] = (st.haystackPoints[team] || 0) + teamPoints;
             st.otherTeamProgress[team] = 0;
+
+            // Grow central haystack for other teams too
+            if (teamPoints > 0) {
+                st.centralHaystackSize = Math.min(10, (st.centralHaystackSize || 1) + 0.5);
+            }
         }
         saveState();
     }

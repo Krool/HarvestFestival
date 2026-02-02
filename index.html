@@ -12,10 +12,6 @@
         <div id="board-view" class="view active">
             <!-- Top Resource Bar -->
             <div id="top-bar">
-                <div class="resource-item seeds">
-                    <span class="resource-icon">🌱</span>
-                    <span id="top-seeds">50</span>
-                </div>
                 <div class="spacer"></div>
                 <button id="menu-btn" class="icon-btn">☰</button>
             </div>
@@ -41,11 +37,11 @@
             <div id="right-badges">
                 <div class="side-badge garden-badge" id="garden-badge">
                     <span class="badge-icon">🌻</span>
-                    <span class="badge-label">Garden</span>
+                    <span class="badge-seed-count" id="badge-seeds">50</span>
                 </div>
                 <div class="side-badge debug-badge" id="debug-harvest-btn">
                     <span class="badge-icon">🐛</span>
-                    <span class="badge-label">Harvest</span>
+                    <span class="badge-label">(Debug)</span>
                 </div>
             </div>
 
@@ -118,6 +114,10 @@
                     <span class="legend-item t2">T2</span>
                     <span class="legend-item t3">T3</span>
                     <span class="legend-item t4">T4</span>
+                </div>
+                <div class="garden-timer">
+                    <span>🌾 Harvest Festival: </span>
+                    <span id="garden-timer">12:00:00</span>
                 </div>
             </div>
 
